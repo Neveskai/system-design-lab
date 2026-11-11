@@ -1,0 +1,16 @@
+{
+  "run": "e9-spike-sync",
+  "target": "http://nginx",
+  "op": "render",
+  "mode": "spike",
+  "rate_requested": 100,
+  "rps_achieved": 226.81695938523433,
+  "p50": 299.200327,
+  "p95": 738.0941839999999,
+  "p99": 959.1314857399999,
+  "max": 2133.672864,
+  "error_rate": 0.00010667425239128116,
+  "dropped_iterations": 276,
+  "iterations_rate": 226.81695938523433,
+  "mbytes_per_s": 0.05990659883693907
+}

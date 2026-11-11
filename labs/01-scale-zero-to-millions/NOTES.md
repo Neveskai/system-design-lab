@@ -1,6 +1,6 @@
 # Lab 01 — Scale from zero to millions (cap. 1)
 
-Status: estágios **single → LB → cache → réplica de leitura** medidos. Pendentes: CDN/MinIO, fila + worker, sharding, chaos.
+Status: estágios **single → LB → cache → réplica de leitura → object storage + CDN → fila + workers** medidos. Pendentes: sharding, chaos.
 
 Domínio usado: backend de um editor colaborativo. `documents` (100k docs de ~1 KB, 10k usuários), API de docs, BFF que monta a tela "workspace" (lista + 5 previews).
 
@@ -146,6 +146,72 @@ Lições:
 - **A réplica cancela queries.** No modo `version` apareceram 72 erros `canceling statement due to conflict with recovery`: o replay do WAL (UPDATE em docs quentes + limpeza de versões antigas) removeu linhas que uma leitura na réplica ainda via. O fallback para o primário absorveu todos (0 erro no cliente). Ajustes: `max_standby_streaming_delay` (mais lag, menos cancelamentos) ou `hot_standby_feedback=on` (primário adia limpeza, mais bloat).
 - **Slot de replicação é armadilha operacional.** Com a réplica parada, o primário guarda todo WAL que ela não recebeu. Sem `max_slot_wal_keep_size` (aqui 1 GB) o disco do primário enche e as escritas param.
 
+### E8 — Object storage (S3) + CDN
+Config: `stages/cdn.env`. SeaweedFS com API S3 (2 vCPU) faz o papel do S3. O MinIO deixou de publicar imagens Docker em 2025, e o pull de `minio/minio` falha. Um nginx `cdn` (2 vCPU, cache em tmpfs) faz o papel de um edge do CloudFront. O bucket `attachments` tem 500 objetos de 256 KB de bytes aleatórios (incompressíveis); 80% das requests vão para 50 arquivos. `GET /attachments/:key` tem 3 caminhos:
+- `proxy`: a API lê do S3 e repassa os bytes (`ATTACH_MODE=proxy`, via nginx).
+- `redirect`: a API responde 302 com URL pré-assinada; o cliente baixa direto do S3 (`ATTACH_MODE=redirect`).
+- `cdn`: o cliente pede ao edge; o edge busca no S3 só no miss (`TARGET=http://cdn`).
+
+**E8a — entrega de anexos** (carga constante, 40 s):
+
+| caminho | arquivos/s | MB/s | erros | p50 | p99 | CPU S3 | CPU por API (4×) | CPU edge |
+|---|---|---|---|---|---|---|---|---|
+| proxy | 300 | 79 | 0% | 6.2 ms | 39 ms | 1.47/2 | 0.42 | — |
+| proxy | 450 | 118 | 0% | 6.1 ms | 85 ms | 1.85/2 | 0.60 | — |
+| proxy | 600 | 157 | 0% | 13 ms | **2457 ms** | **2.02/2** | 0.89 | — |
+| redirect | 300 | 79 | 0% | 2.3 ms | 7.5 ms | 1.41/2 | 0.26 | — |
+| redirect | 600 | 82 | 3.5% | 2.9 ms | **20.7 s** | **2.09/2** | 0.38 | — |
+| redirect | 900 | 3 | **46%** | — | 16 s | 1.76/2 | 0.34 | — |
+| cdn | 600 | 158 | 0% | 0.5 ms | 4.9 ms | 0.31 | ~0 | 0.34/2 |
+| cdn | 1500 | 394 | 0% | 0.6 ms | 5.8 ms | 0.30 | ~0 | 0.90/2 |
+| cdn | 3000 | **788** | 0% | 0.7 ms | 69 ms | 0.25 | ~0 | 1.86/2 |
+
+Hit ratio do edge: 98–99.5%. Na rodada de 3000/s o k6 já usava 2.45 cores, então o teto do edge pode estar um pouco acima disso.
+
+**E8b — cachear o resultado do render no edge.** Com `RENDER_MAX_AGE=10`, a API manda `Cache-Control: public, max-age=10` e o edge guarda a resposta. Rampa até 6000/s: média de 3769/s com 0 erro, 0 iterações descartadas, p99 9 ms e hit 79.5%. Esse hit corresponde aos 80% de tráfego quente; os 20% frios nunca se repetem em 10 s. APIs em 0.6 core. No E5 (só cache de dados no Redis), a mesma rota saturava as APIs em ~1.9k/s de média (0.9 core cada).
+
+**E8c — staleness no edge.** Sobrescrevi `att-7.bin` no S3. A origem passou a devolver o ETag novo (`4341…`), mas o edge continuou servindo o antigo (`a51a…`) como `HIT` até o TTL de 60 s acabar. Com o render acontece o mesmo: até `max-age=10` de resposta velha depois de um `PUT`.
+
+Lições:
+- **A origem é o gargalo, não a API.** Servir 256 KB custa mais CPU no object store do que na API: 1.5 core do SeaweedFS para 80 MB/s. Na AWS o S3 não tem esse teto de CPU (escala por prefixo, ~5.5k GET/s por prefixo), mas cobra por request e por GB de saída.
+- **O proxy pela API custa ~5.6 ms de CPU por arquivo de 256 KB** (~45 MB/s por core). Ele também deixa a API no caminho dos bytes: cada MB entra e sai da API. Num editor com imagens, isso compete com as requests de doc.
+- **A URL pré-assinada tira os bytes da API, mas não protege a origem.** A API caiu de 0.42 para 0.26 core. O presign do SDK v3 não custa "microssegundos": são ~3.5 ms de CPU por URL, por causa da pilha de middleware. Sem um pool de conexões keepalive na frente, centenas de clientes abrem conexões direto no S3. O SeaweedFS desabou antes do que no proxy: 600/s com p99 de 20 s, 900/s com 46% de erro. No modo proxy, a API, com 128 sockets em keepalive, fazia papel de *connection pooler* da origem.
+- **O CDN muda a ordem de grandeza.** Entregou 5× mais throughput que o melhor caminho até a origem, com p50 abaixo de 1 ms, a origem em 0.25–0.30 core e as APIs fora do caminho. O limite passou a ser a CPU do edge (e do gerador de carga).
+- **Cachear o resultado vence cachear o insumo.** No E5 o Redis guardava o doc, mas cada request refazia 200 hashes. Com `Cache-Control` no resultado, 80% das requests nem chegam à API. A troca é staleness: até 10 s de render velho depois de um `PUT`.
+- **Na invalidação, versione a URL em vez de purgar.** Sobrescrever o mesmo key deixa o edge com a versão velha até o TTL. Com key imutável (`att-7.v2.bin`, ou o hash do conteúdo no nome) e TTL longo, não há o que invalidar. O purge (CloudFront invalidation) leva de segundos a minutos, é cobrado acima de 1000 paths/mês e não alcança caches de browser.
+- **Problema do lab:** o relógio da VM do Docker Desktop pulou ~2 h para frente e depois voltou. O Prometheus passou a rejeitar amostras ("too old or too far into the future") e os containers mostravam "Up Less than a second". Correção: `docker compose up -d --force-recreate --renew-anon-volumes prometheus`. Os containers que viveram o salto também ficaram com estado ruim (uma réplica fora do pool do nginx); recriar nginx/api/cdn resolveu.
+
+### E9 — Fila (Redis Streams) + workers
+Config: `stages/queue.env`. Render pesado (`RENDER_ITER=JOB_ITER=2000`, ~10× o E5) faz o papel de export/PDF/diff. `OP=render` roda inline na API; `OP=enqueue` faz `POST /docs/:id/render-jobs`, que responde 202 com o id do job, e `--scale worker=N` processa. A fila roda num Redis separado do cache (`noeviction` + AOF): um cache pode perder chave, uma fila não. Consumer group com `XREADGROUP BLOCK`; jobs sem ack por mais de `CLAIM_IDLE_MS` voltam via `XAUTOCLAIM`. Entrega é *at-least-once*, então o resultado é gravado por id do job (idempotente). `QUEUE_MAX` > 0 liga admission control: com a fila cheia, a API responde 503 + `Retry-After`.
+
+**E9a — teto síncrono.** Rampa de `OP=render`: ~381 renders/s com as 4 APIs saturadas.
+
+**E9b — pico de 100 → 600/s por 30 s:**
+
+| caminho | iterações descartadas | latência para o cliente | backlog máximo | tempo até o resultado |
+|---|---|---|---|---|
+| sync (render na API) | 276 | p50 299 ms, p99 959 ms | — | = latência |
+| async, 2 workers | **0** | enqueue p99 **3 ms** | 8426 jobs | p99 ~30 s |
+| async, 2 workers, `QUEUE_MAX=1000` | 0 (27% recebem 503 rápido) | enqueue p99 ~3 ms | ~1000 | ≤ 5 s |
+
+**E9c — vazão de dreno** (backlog cheio, só workers consumindo):
+
+| workers | jobs/s |
+|---|---|
+| 1 | ~171 |
+| 2 | ~380 |
+| 4 | ~609 |
+
+**E9d — matar um worker no meio.** 9001 jobs enfileirados, 9001 resultados gravados. O job que estava com o worker morto ficou pendente e foi reclamado por outro worker depois de ~30 s (`CLAIM_IDLE_MS`).
+
+Lições:
+- **Fila não cria capacidade, ela move o tempo.** 2 workers drenam ~380/s, o mesmo que as 4 APIs faziam inline (~381/s): mesma CPU, mesma vazão. A fila troca latência por disponibilidade: o pico vira backlog, o cliente recebe 202 em 3 ms e a API fica livre para as rotas leves.
+- **Lei de Little dá o atraso.** Backlog de 8426 ÷ ~380/s ≈ 22 s de espera, coerente com o p99 de ~30 s até o resultado. Para um SLO de "resultado em 5 s", o backlog máximo é ~5 s × vazão de dreno.
+- **Fila sem limite é um timeout escondido.** Sem `QUEUE_MAX` nada falha, mas o resultado chega 30 s depois e o usuário já desistiu. Com `QUEUE_MAX=1000`, 27% das requests recebem 503 imediato e o restante sai em até 5 s. Rejeitar cedo (backpressure) é melhor que aceitar trabalho que vai ficar velho. É o mesmo admission control que faltou no E6 e no E7.
+- **Workers escalam de forma independente da API.** O dreno cresceu de 171 para 609/s com 4 workers, mas de forma sublinear de 2 para 4 (1.6×). A causa não foi isolada; o suspeito é CPU do host disputada com k6 e APIs. É o argumento para autoscaling por tamanho de fila (backlog por worker), não por CPU da API.
+- **At-least-once exige idempotência.** O job do worker morto foi reprocessado por outro; sem o resultado indexado por id, o efeito (e-mail, cobrança, export) aconteceria duas vezes. `CLAIM_IDLE_MS` é a troca: curto demais reprocessa jobs lentos que ainda estão vivos; longo demais atrasa a recuperação (aqui ~30 s).
+- **Problema operacional:** consumers mortos continuam no consumer group, com o PEL deles. É preciso limpar com `XGROUP DELCONSUMER` (após reclamar os pendentes), senão `XINFO CONSUMERS` cresce a cada deploy.
+
 ---
 
 ## 3. Mapa decisão × gargalo
@@ -163,6 +229,11 @@ Lições:
 | Réplica de leitura assíncrona | CPU/IO de leitura do DB | consistência (stale reads), queries canceladas, WAL retido pelo slot | CPU por instância PG; `stale_reads`; `pg_replication_lag_seconds`; `conflict with recovery` |
 | Read-your-writes | dado "sumindo" após salvar | carga no primário (`primary`), releitura (`version`) ou espera/polling (`lsn`) | `db_reads_total{pool,reason}`; p50 do read-after-write |
 | Health check passivo no LB | tráfego para instância morta | cascata: sobrecarga marca todas as instâncias como down | `no live upstreams` com APIs vivas |
+| Arquivos em object storage | disco local da API (quebra stateless); blob no DB (WAL, réplica) | CPU/banda da origem; custo por request e GB | CPU e net tx do S3; MB/s entregue |
+| URL pré-assinada | bytes passando pela API | conexões dos clientes direto na origem; CPU do presign | CPU da API por request; erros/latência da origem |
+| CDN (edge cache) | banda e CPU da origem e da API | staleness até o TTL; invalidação | hit ratio (`X-Cache`); CPU da origem ≈ constante com carga subindo |
+| Fila + workers | picos de trabalho pesado bloqueando a API | latência até o resultado (backlog); entrega duplicada; consumers órfãos | tamanho do backlog; jobs/s de dreno; idade do job mais velho |
+| Limite de fila (`QUEUE_MAX`) | backlog infinito (resultado inútil de tão velho) | requests rejeitadas (503) | taxa de 503; tempo até o resultado ≤ SLO |
 
 ---
 
@@ -175,6 +246,10 @@ Lições:
 - **Cache + réplica juntos (bug clássico, ainda não medido)**: o write invalida o cache; a próxima leitura faz miss, lê a réplica atrasada e **grava o valor velho no cache pelo TTL inteiro**. Stale de milissegundos vira stale de 30 s. Correções: popular o cache a partir do primário após o write (write-through); invalidar de novo depois de um atraso maior que o lag (*delayed double delete*); ou guardar a versão no cache e recusar versões menores.
 - **Mais réplicas**: leitura escala quase linear até o primário virar gargalo (cada réplica é mais um walsender e mais rede de saída). Escrita não escala com réplicas: para isso, sharding ou batching.
 - **Réplica síncrona** (`synchronous_standby_names` + `synchronous_commit=remote_apply`): read-your-writes garantido, mas cada commit espera um round trip até a réplica (entre AZs +1–2 ms; entre regiões +60–150 ms). Testável aqui comparando p99 de `OP=write`.
+- **Arquivo grande (vídeo, export de 100 MB)**: o CDN ajuda pouco se cada arquivo é pedido uma vez só. Nesse caso valem range requests, multipart upload direto do cliente (presigned POST/multipart) e storage class mais barata para dado frio.
+- **Conteúdo privado por usuário**: CDN com URL assinada (CloudFront signed URL/cookie) em vez de bucket público. A chave do cache precisa ignorar a assinatura; senão cada usuário vira um miss.
+- **Trabalho com prioridades** (export pedido pelo usuário × reindexação em lote): uma fila por prioridade ou workers dedicados; senão o lote enche o backlog e o pedido interativo espera atrás dele.
+- **Ordem por documento**: Redis Streams com vários consumers não garante ordem por doc. Se a ordem importa (aplicar ops de um doc), particione a fila por docId (Kafka/Kinesis com chave de partição, SQS FIFO com `MessageGroupId`).
 - **Multi-região**: latência entre regiões de 60–150 ms muda tudo. Leitura local com réplica regional; escrita no primário (ou multi-primário com CRDT — caso do editor colaborativo).
 
 ---
@@ -189,10 +264,17 @@ Lições:
 | Postgres 2 vCPU | RDS db.m7g.large / Aurora | IOPS de EBS (gp3 3000 baseline) e rede da instância também viram teto |
 | Redis | ElastiCache (Redis/Valkey) | cluster mode para escalar escrita; réplicas para leitura e failover |
 | DNS do Docker | Route 53 / Cloud Map | TTLs e health checks; mesmo problema do E6 em escala |
+| SeaweedFS (API S3) | S3 | sem teto de CPU próprio, mas ~5.5k GET/s por prefixo; cobra por request (~$0.4/milhão de GET) e por saída (~$0.09/GB) |
+| `ATTACH_MODE=redirect` | S3 presigned URL | mesmo código do SDK; a URL expira (aqui 60 s); upload direto do browser com presigned PUT/POST |
+| nginx `cdn` | CloudFront | dezenas de edges perto do usuário; Origin Access Control deixa o bucket privado; Origin Shield = uma camada a mais de cache antes da origem |
+| `RENDER_MAX_AGE` | CloudFront cache policy / `Cache-Control` | TTL min/default/max por behavior; saída do CloudFront é mais barata que saída direta do S3 |
 | `postgres-replica` (streaming, slot) | RDS read replica / Aurora Replica | RDS: réplica assíncrona, lag de segundos sob carga de escrita. Aurora: réplicas leem o mesmo storage, lag típico < 20 ms, até 15 réplicas |
 | `READ_FROM=both` | Aurora reader endpoint | balanceia por DNS entre réplicas; o app precisa de 2 pools (writer e reader) e decide por query |
 | `RYW` (version/lsn) | DynamoDB `ConsistentRead`; Cosmos DB session consistency | DynamoDB cobra 2× por leitura fortemente consistente: a mesma troca de custo do E7b |
 | `REPLICA_DELAY=100ms` | réplica cross-region (Aurora Global Database, lag ~1 s) | leitura local rápida; escrita sempre na região primária |
+| `queue` (Redis Streams) | SQS / Kinesis / MSK | SQS: visibility timeout = `CLAIM_IDLE_MS`, DLQ após N recebimentos, sem limite de backlog prático; Kinesis/MSK: ordem por shard/partição |
+| `worker` com `--scale` | ECS service escalando por `ApproximateNumberOfMessagesVisible` / Lambda com SQS | escalar por backlog por worker; Lambda escala sozinho mas tem limite de concorrência e cold start |
+| `QUEUE_MAX` + 503 | API Gateway throttling / limite no produtor | SQS não rejeita por tamanho de fila: o limite precisa estar no produtor |
 | rede bridge local (~0.05 ms) | mesma AZ ~0.1–0.3 ms, entre AZs ~0.5–2 ms | multi-AZ dobra round trips caros; testar com toxiproxy (próximo estágio) |
 | Prometheus/Grafana | CloudWatch / Managed Prometheus + Grafana | métricas de 1 min no CloudWatch padrão escondem picos de segundos |
 
@@ -206,6 +288,8 @@ Lições:
 - **Event loop lag ↔ long tasks no browser.** Mesma causa (trabalho síncrono longo), mesma métrica (lag/INP), mesmas soluções (dividir trabalho, workers).
 - **LB stateless ↔ servidor de colaboração stateful.** Editor colaborativo precisa que todos os clientes de um doc caiam no mesmo processo (estado do doc em memória, CRDT/OT). Isso é *sticky routing por documento* — o oposto do web tier stateless do livro. Solução comum: roteamento por hash do docId (consistent hashing, cap. 5) + pub/sub entre nós. Lab futuro (chat system, cap. 12).
 - **Read-your-writes ↔ UI otimista + versão.** O E7b é o bug "salvei e voltou o texto antigo" que aparece ao refazer o fetch logo após uma mutation. No cliente a solução é a mesma da estratégia `version`: manter o estado otimista até o servidor devolver `version >= a minha`. Em CRDT/OT, o vetor de versões (ou o número da última op) é exatamente o token que diz se uma réplica está em dia.
+- **CDN ↔ bundle com hash no nome.** O E8c é o motivo de existir o `main.3f9a1c.js`: URL imutável com `Cache-Control: immutable, max-age=31536000`, e só o `index.html` com TTL curto. Imagens coladas no editor seguem o mesmo padrão: upload direto ao S3 por URL pré-assinada (o servidor de colaboração nunca vê os bytes), e o doc guarda só a referência imutável.
+- **Fila ↔ fila de ops offline e Web Workers.** O cliente de um editor já tem uma fila: ops feitas offline esperam e são reenviadas (at-least-once), por isso cada op carrega um id e o servidor deduplica. Trabalho pesado no browser (diff, export, parse) vai para um Web Worker pelo mesmo motivo do E9: manter o thread que responde ao usuário livre. E `QUEUE_MAX` é o equivalente a descartar/compactar ops antigas em vez de deixar a fila crescer sem limite.
 - **Sharding por usuário ↔ particionar por documento/room.** A chave de partição natural de um editor é o documento; hotspot = doc viral.
 
 ---
@@ -213,8 +297,8 @@ Lições:
 ## 7. Próximos estágios deste lab
 
 1. ~~Réplica de leitura PG~~ (E7). Faltam: cache + réplica (valor velho no cache), réplica síncrona, matar a réplica sob carga.
-2. MinIO como S3 + nginx como CDN para assets estáticos.
-3. Fila (Redis Streams) + worker para `/render`: comparar com E5.
+2. ~~Object storage + CDN~~ (E8). Faltam: upload direto com presigned PUT, Origin Shield (2 níveis de cache).
+3. ~~Fila + worker~~ (E9). Faltam: dead-letter queue (job que falha sempre), autoscaling por backlog, filas por prioridade.
 4. Sharding manual (2 PGs, `owner_id % 2`): hotspot e query cross-shard.
 5. Chaos: toxiproxy (latência entre "AZs"), matar réplica, derrubar Redis (o código cai para o DB — medir o impacto).
 6. Admission control no BFF (rejeitar quando event loop lag > 100 ms) e repetir E6 a 300 rps.

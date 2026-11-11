@@ -1,0 +1,16 @@
+{
+  "run": "e8-attach-redirect-300",
+  "target": "http://nginx",
+  "op": "attach",
+  "mode": "constant",
+  "rate_requested": 300,
+  "rps_achieved": 600.023927730291,
+  "p50": 2.3141905,
+  "p95": 4.11229175,
+  "p99": 7.5169698400000176,
+  "max": 64.566908,
+  "error_rate": 0,
+  "dropped_iterations": 0,
+  "iterations_rate": 300.0119638651455,
+  "mbytes_per_s": 78.9424526136019
+}

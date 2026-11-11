@@ -1,0 +1,17 @@
+{
+  "run": "e8-attach-cdn-1500",
+  "target": "http://cdn",
+  "op": "attach",
+  "mode": "constant",
+  "rate_requested": 1500,
+  "rps_achieved": 1500.0608491291998,
+  "p50": 0.630306,
+  "p95": 1.577394,
+  "p99": 5.751005,
+  "max": 69.624288,
+  "error_rate": 0,
+  "dropped_iterations": 0,
+  "cdn_hits": 0.9914001433309445,
+  "iterations_rate": 1500.0608491291998,
+  "mbytes_per_s": 394.03755691185194
+}

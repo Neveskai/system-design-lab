@@ -1,0 +1,16 @@
+{
+  "run": "e9-kill-worker",
+  "target": "http://nginx",
+  "op": "enqueue",
+  "mode": "constant",
+  "rate_requested": 150,
+  "rps_achieved": 150.01983214263248,
+  "p50": 1.036044,
+  "p95": 2.237469,
+  "p99": 3.24738,
+  "max": 9.94942,
+  "error_rate": 0,
+  "dropped_iterations": 0,
+  "iterations_rate": 150.01983214263248,
+  "mbytes_per_s": 0.041855533167794466
+}

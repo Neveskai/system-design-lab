@@ -1,0 +1,16 @@
+{
+  "run": "e8-attach-proxy-300",
+  "target": "http://nginx",
+  "op": "attach",
+  "mode": "constant",
+  "rate_requested": 300,
+  "rps_achieved": 299.99730683610966,
+  "p50": 6.170853,
+  "p95": 13.236883,
+  "p99": 39.291572,
+  "max": 105.288652,
+  "error_rate": 0,
+  "dropped_iterations": 0,
+  "iterations_rate": 299.99730683610966,
+  "mbytes_per_s": 78.70489344306705
+}

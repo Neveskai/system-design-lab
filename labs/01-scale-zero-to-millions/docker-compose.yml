@@ -84,6 +84,16 @@ services:
     cpus: 1
     mem_limit: 256m
 
+  # Queue broker. Not the cache Redis: see app/src/queue.ts (noeviction + AOF).
+  queue:
+    image: redis:8-alpine
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction",
+              "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes:
+      - queuedata:/data
+    cpus: 1
+    mem_limit: 384m
+
   api:
     <<: *app
     command: ["node", "src/api.ts"]
@@ -99,12 +109,19 @@ services:
       CACHE_TTL_S: ${CACHE_TTL_S:-30}
       CACHE_SINGLEFLIGHT: ${CACHE_SINGLEFLIGHT:-0}
       RENDER_ITER: ${RENDER_ITER:-200}
+      RENDER_MAX_AGE: ${RENDER_MAX_AGE:-0}
+      S3_ENDPOINT: http://seaweedfs:8333
+      ATTACH_MODE: ${ATTACH_MODE:-proxy}
+      QUEUE_URL: redis://queue:6379
+      QUEUE_MAX: ${QUEUE_MAX:-0}
     cpus: ${API_CPUS:-1}           # ~ 1 vCPU instance per replica
     mem_limit: 512m
     depends_on:
       postgres: { condition: service_healthy }
       postgres-replica: { condition: service_healthy }
       redis: { condition: service_started }
+      seaweedfs: { condition: service_healthy }
+      queue: { condition: service_started }
 
   nginx:
     image: nginx:1.29-alpine
@@ -112,6 +129,55 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     cpus: ${NGINX_CPUS:-1}       # ~ LB capacity (ALB scales this for you; nginx on EC2 does not)
     depends_on: [api]
+
+  # Async render workers. Scale with WORKERS (scripts/run.sh) => --scale worker=N.
+  worker:
+    <<: *app
+    command: ["node", "src/worker.ts"]
+    environment:
+      PG_URL: postgres://lab:lab@postgres:5432/lab
+      PG_POOL_MAX: 2
+      QUEUE_URL: redis://queue:6379
+      JOB_ITER: ${JOB_ITER:-2000}
+      WORKER_BATCH: ${WORKER_BATCH:-10}
+      CLAIM_IDLE_MS: ${CLAIM_IDLE_MS:-30000}
+    cpus: ${WORKER_CPUS:-1}
+    mem_limit: 256m
+    depends_on:
+      postgres: { condition: service_healthy }
+      queue: { condition: service_started }
+
+  # Object storage with the S3 API (stands in for S3). MinIO stopped shipping
+  # Docker images in 2025; SeaweedFS speaks the same API for what we use.
+  # One process = master + volume server + filer + S3 gateway.
+  seaweedfs:
+    image: chrislusf/seaweedfs:3.97
+    command: ["server", "-dir=/data", "-s3", "-s3.config=/etc/seaweedfs/s3.json",
+              "-master.volumeSizeLimitMB=1024", "-volume.max=20"]
+    volumes:
+      - ./s3/s3.json:/etc/seaweedfs/s3.json:ro
+      - s3data:/data
+    cpus: ${S3_CPUS:-2}
+    mem_limit: 1g
+    ports: ["8333:8333"]
+    healthcheck:   # master elects itself, then filer, then S3 gateway: ~30 s cold
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8333/healthz || exit 1"]
+      interval: 2s
+      retries: 60
+
+  # Edge cache. Template => envsubst fills ${CDN_TTL} at start.
+  cdn:
+    image: nginx:1.29-alpine
+    environment:
+      NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx
+      CDN_TTL: ${CDN_TTL:-60s}
+    volumes:
+      - ./nginx/cdn.conf:/etc/nginx/templates/nginx.conf.template:ro
+    tmpfs:
+      - /var/cache/nginx:size=450m
+    cpus: ${CDN_CPUS:-2}
+    mem_limit: 768m
+    depends_on: [nginx, seaweedfs]
 
   bff:
     <<: *app
@@ -161,3 +227,5 @@ services:
 volumes:
   pgdata:
   pgreplica:
+  s3data:
+  queuedata:

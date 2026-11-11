@@ -1,0 +1,16 @@
+{
+  "run": "e9-spike-async-w2-max1000",
+  "target": "http://nginx",
+  "op": "enqueue",
+  "mode": "spike",
+  "rate_requested": 100,
+  "rps_achieved": 229.0400228978012,
+  "p50": 1.019476,
+  "p95": 2.0288071999999993,
+  "p99": 3.2378017600000004,
+  "max": 11.854841,
+  "error_rate": 0.2720166203035318,
+  "dropped_iterations": 0,
+  "iterations_rate": 229.0400228978012,
+  "mbytes_per_s": 0.0595409778824833
+}

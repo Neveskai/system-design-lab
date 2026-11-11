@@ -9,6 +9,7 @@ for x in sorted(r,key=lambda x:-float(x['value'][1]))[:8]:
   l=x['metric']; n=l.get('name') or l.get('instance') or l.get('state') or ''
   print(f\"  {'$1':38} {n:28} {float(x['value'][1]):.3f}\")"; }
 q "cpu cores (peak)"            "max_over_time((sum by (name) (rate(container_cpu_usage_seconds_total{name=~\"lab01-.+\"}[10s])))[$W:2s])"
+q "net tx MB/s (peak)"           "max_over_time((sum by (name) (rate(container_network_transmit_bytes_total{name=~\"lab01-.+\"}[10s])) / 1e6)[$W:2s])"
 q "mem MB (peak)"               "max_over_time((sum by (name) (container_memory_working_set_bytes{name=~\"lab01-.+\"}) / 1e6)[$W:2s])"
 q "event loop lag p99 s (peak)" "max_over_time(nodejs_eventloop_lag_p99_seconds[$W])"
 q "db pool waiting (peak)"      "max_over_time((sum by (instance) (db_pool_waiting))[$W:2s])"
@@ -16,3 +17,7 @@ q "pg TPS (peak)"               "max_over_time((sum(rate(pg_stat_database_xact_c
 q "pg blks hit ratio (avg)"     "sum(rate(pg_stat_database_blks_hit{datname=\"lab\"}[$W])) / (sum(rate(pg_stat_database_blks_hit{datname=\"lab\"}[$W])) + sum(rate(pg_stat_database_blks_read{datname=\"lab\"}[$W])))"
 q "cache hit ratio (avg)"       "sum(rate(cache_hits_total[$W])) / (sum(rate(cache_hits_total[$W])) + sum(rate(cache_misses_total[$W])))"
 q "server p99 s by job (peak)"  "max_over_time((histogram_quantile(0.99, sum by (le,job) (rate(http_request_duration_seconds_bucket[10s]))))[$W:2s])"
+q "queue backlog (peak)"        "max_over_time((max by (state) (queue_backlog))[$W:2s])"
+q "job end-to-end p99 s (peak)" "max_over_time((histogram_quantile(0.99, sum by (le) (rate(job_end_to_end_seconds_bucket[10s]))))[$W:2s])"
+q "jobs done/s (peak)"          "max_over_time((sum(rate(jobs_processed_total[10s])))[$W:2s])"
+q "jobs enqueued/s by result"   "max_over_time((sum by (result) (rate(jobs_enqueued_total[10s])))[$W:2s])"

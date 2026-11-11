@@ -1,0 +1,13 @@
+{
+  "identities": [
+    {
+      "name": "lab",
+      "credentials": [{ "accessKey": "lab", "secretKey": "labsecret" }],
+      "actions": ["Admin", "Read", "List", "Tagging", "Write"]
+    },
+    {
+      "name": "anonymous",
+      "actions": ["Read:attachments"]
+    }
+  ]
+}

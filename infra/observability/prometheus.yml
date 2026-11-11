@@ -16,6 +16,12 @@ scrape_configs:
         type: A
         port: 4000
         refresh_interval: 5s
+  - job_name: worker
+    dns_sd_configs:
+      - names: [worker]
+        type: A
+        port: 3001
+        refresh_interval: 5s
   - job_name: postgres
     static_configs: [{ targets: ["postgres-exporter:9187", "postgres-replica-exporter:9187"] }]
   - job_name: redis

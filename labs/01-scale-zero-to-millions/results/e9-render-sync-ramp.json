@@ -1,0 +1,16 @@
+{
+  "run": "e9-render-sync-ramp",
+  "target": "http://nginx",
+  "op": "render",
+  "mode": "ramp",
+  "rate_requested": 600,
+  "rps_achieved": 381.45427903551854,
+  "p50": 17.578097,
+  "p95": 770.5750285999999,
+  "p99": 2843.599873019999,
+  "max": 8160.156045,
+  "error_rate": 0.0412071967498549,
+  "dropped_iterations": 485,
+  "iterations_rate": 381.45427903551854,
+  "mbytes_per_s": 0.10153254173665513
+}

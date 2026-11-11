@@ -1,0 +1,17 @@
+{
+  "run": "e8-render-cdn-ramp",
+  "target": "http://cdn",
+  "op": "render",
+  "mode": "ramp",
+  "rate_requested": 6000,
+  "rps_achieved": 3768.668598601772,
+  "p50": 0.386674,
+  "p95": 4.449010599999999,
+  "p99": 9.083583919999986,
+  "max": 501.076212,
+  "error_rate": 0,
+  "dropped_iterations": 0,
+  "cdn_hits": 0.7945854326777961,
+  "iterations_rate": 3768.668598601772,
+  "mbytes_per_s": 1.1814011592523563
+}

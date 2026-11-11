@@ -1,0 +1,16 @@
+{
+  "run": "e9-drain-w4",
+  "target": "http://nginx",
+  "op": "enqueue",
+  "mode": "constant",
+  "rate_requested": 800,
+  "rps_achieved": 800.0375249067324,
+  "p50": 1.158603,
+  "p95": 1.72338755,
+  "p99": 4.616470509999975,
+  "max": 23.305956,
+  "error_rate": 0,
+  "dropped_iterations": 0,
+  "iterations_rate": 800.0375249067324,
+  "mbytes_per_s": 0.22321046944897835
+}

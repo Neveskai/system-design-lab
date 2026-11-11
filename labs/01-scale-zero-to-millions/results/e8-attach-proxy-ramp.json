@@ -1,0 +1,16 @@
+{
+  "run": "e8-attach-proxy-ramp",
+  "target": "http://nginx",
+  "op": "attach",
+  "mode": "ramp",
+  "rate_requested": 4000,
+  "rps_achieved": 2299.2256406692254,
+  "p50": 0.382448,
+  "p95": 1184.2951411999973,
+  "p99": 4827.482088319999,
+  "max": 8726.115738,
+  "error_rate": 0.904123617585772,
+  "dropped_iterations": 9311,
+  "iterations_rate": 2299.2256406692254,
+  "mbytes_per_s": 58.486086064704274
+}

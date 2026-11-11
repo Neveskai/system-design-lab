@@ -1,8 +1,11 @@
 // One script, many experiments. All knobs are env vars (set by scripts/run.sh):
 //   TARGET    base URL (http://api:3000 direct, http://nginx via LB, http://bff:4000)
-//   OP        read | mixed | write | render | list | bff | ryw
+//   OP        read | mixed | write | render | list | bff | ryw | attach
 //             ryw = write a doc, then read it back at once; counts stale reads
+//             attach = GET /attachments/att-N.bin (object storage, follows 302)
+//             enqueue = POST /docs/:id/render-jobs (async render, worker does the CPU)
 //   MODE      constant (fixed RATE for DURATION) | ramp (0 -> MAX_RATE, find the knee)
+//             spike (RATE for 30s, SPIKE for SPIKE_FOR, back to RATE for 60s: a burst)
 //   RATE, MAX_RATE, DURATION, HOT (fraction of traffic on hot docs, 0..1)
 //
 // Open model (arrival-rate executors): requests arrive at a fixed rate whether or not
@@ -22,9 +25,28 @@ const HOT = Number(__ENV.HOT || 0.8);      // 80% of requests...
 const HOT_SET = Number(__ENV.HOT_SET || 1000); // ...go to 1% of docs (1000 of 100k)
 const DOCS = 100000;
 const USERS = 10000;
+const ATTACH_COUNT = Number(__ENV.ATTACH_COUNT || 500);
+const ATTACH_HOT = Number(__ENV.ATTACH_HOT || 50); // HOT share of requests hit the first 50 files
+
+const spike = {
+  executor: "ramping-arrival-rate",
+  startRate: RATE,
+  timeUnit: "1s",
+  preAllocatedVUs: 200,
+  maxVUs: 3000,
+  stages: [
+    { target: RATE, duration: "30s" },
+    { target: Number(__ENV.SPIKE || RATE * 3), duration: "2s" },
+    { target: Number(__ENV.SPIKE || RATE * 3), duration: __ENV.SPIKE_FOR || "30s" },
+    { target: RATE, duration: "2s" },
+    { target: RATE, duration: "60s" },
+  ],
+};
 
 const scenario =
-  MODE === "ramp"
+  MODE === "spike"
+    ? spike
+    : MODE === "ramp"
     ? {
         executor: "ramping-arrival-rate",
         startRate: 50,
@@ -57,12 +79,20 @@ function docId() {
   return 1 + Math.floor(Math.random() * DOCS);
 }
 const userId = () => 1 + Math.floor(Math.random() * USERS);
+const attachId = () => 1 + Math.floor(Math.random() * (Math.random() < HOT ? ATTACH_HOT : ATTACH_COUNT));
 
 const body = JSON.stringify({ body: "edited ".repeat(150) });
 const params = { headers: { "content-type": "application/json" }, timeout: "10s" };
 
 // Fraction of read-after-write that returned an older version than the one just written.
 const staleReads = new Rate("stale_reads");
+// Edge cache hit ratio, from the X-Cache header the CDN adds (HIT/MISS/EXPIRED/UPDATING...).
+const cdnHits = new Rate("cdn_hits");
+function countCdn(r) {
+  const x = r.headers["X-Cache"];
+  if (x) cdnHits.add(x === "HIT");
+  return r;
+}
 
 function writeThenRead() {
   const id = docId();
@@ -83,7 +113,9 @@ const ops = {
   write: () => http.put(`${TARGET}/docs/${docId()}`, body, { ...params, tags: { name: "PUT /docs/:id" } }),
   mixed: () => (Math.random() < 0.9 ? ops.read() : ops.write()),
   list: () => http.get(`${TARGET}/users/${userId()}/docs`, { tags: { name: "GET /users/:id/docs" } }),
-  render: () => http.get(`${TARGET}/docs/${docId()}/render`, { tags: { name: "GET /docs/:id/render" } }),
+  render: () => countCdn(http.get(`${TARGET}/docs/${docId()}/render`, { tags: { name: "GET /docs/:id/render" } })),
+  enqueue: () => http.post(`${TARGET}/docs/${docId()}/render-jobs`, null, { tags: { name: "POST /docs/:id/render-jobs" } }),
+  attach: () => countCdn(http.get(`${TARGET}/attachments/att-${attachId()}.bin`, { tags: { name: "GET /attachments/:key" } })),
   bff: () => http.get(`${TARGET}/workspace/${userId()}`, { tags: { name: "GET /workspace/:id" } }),
   // RYW_FRAC of iterations are write-then-read, the rest are plain reads (background load).
   ryw: () => (Math.random() < Number(__ENV.RYW_FRAC || 0.2) ? writeThenRead() : ops.read()),
@@ -111,6 +143,9 @@ export function handleSummary(data) {
     error_rate: m.http_req_failed.values.rate,
     dropped_iterations: m.dropped_iterations ? m.dropped_iterations.values.count : 0,
     stale_reads: m.stale_reads ? m.stale_reads.values.rate : undefined,
+    cdn_hits: m.cdn_hits ? m.cdn_hits.values.rate : undefined,
+    iterations_rate: m.iterations.values.rate,           // != rps when a 302 adds a 2nd request
+    mbytes_per_s: m.data_received.values.rate / 1e6,
   };
   const text =
     `\n=== ${run} ===\n` +
@@ -118,6 +153,8 @@ export function handleSummary(data) {
     `achieved=${out.rps_achieved.toFixed(0)}/s  errors=${(out.error_rate * 100).toFixed(2)}%  dropped=${out.dropped_iterations}\n` +
     `latency p50=${ms(out.p50)} p95=${ms(out.p95)} p99=${ms(out.p99)} max=${ms(out.max)}\n` +
     (out.stale_reads === undefined ? "" : `stale reads after write=${(out.stale_reads * 100).toFixed(2)}%\n`) +
+    (out.cdn_hits === undefined ? "" : `cdn hit ratio=${(out.cdn_hits * 100).toFixed(1)}%\n`) +
+    `iterations=${out.iterations_rate.toFixed(0)}/s  received=${out.mbytes_per_s.toFixed(1)} MB/s\n` +
     `(dropped > 0 => k6 had no free VU: server too slow for requested rate, i.e. saturated)\n`;
   return { stdout: text, [`/results/${run}.json`]: JSON.stringify(out, null, 2) };
 }

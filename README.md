@@ -6,7 +6,7 @@ Laboratório local para estudar os capítulos de *System Design Interview* (Alex
 
 | cap. | lab | status |
 |---|---|---|
-| 1 | [Scale from zero to millions](labs/01-scale-zero-to-millions/NOTES.md) | single → LB → cache → réplica medidos; CDN/fila/sharding pendentes |
+| 1 | [Scale from zero to millions](labs/01-scale-zero-to-millions/NOTES.md) | single → LB → cache → réplica → S3 + CDN → fila medidos; sharding/chaos pendentes |
 | 2 | Back-of-the-envelope estimation | pendente |
 | 4 | Rate limiter | pendente |
 | 5 | Consistent hashing | pendente |
