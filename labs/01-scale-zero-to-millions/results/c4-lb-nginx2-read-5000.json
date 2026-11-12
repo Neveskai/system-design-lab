@@ -1,0 +1,14 @@
+{
+  "run": "c4-lb-nginx2-read-5000",
+  "target": "http://nginx",
+  "op": "read",
+  "mode": "constant",
+  "rate_requested": 5000,
+  "rps_achieved": 4659.796731555933,
+  "p50": 153.16126150000002,
+  "p95": 532.7426450999998,
+  "p99": 773.4864823300004,
+  "max": 1909.853669,
+  "error_rate": 0,
+  "dropped_iterations": 19401
+}

@@ -33,8 +33,13 @@ services:
       - shared_preload_libraries=pg_stat_statements
       - -c
       - synchronous_commit=${PG_SYNC_COMMIT:-on}   # off = faster writes, lose last ms on crash
+      - -c
+      - hba_file=/etc/postgresql/pg_hba.conf       # allows replication connections
+      - -c
+      - max_slot_wal_keep_size=1GB                 # a dead replica must not fill the primary disk
     volumes:
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./db/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
       - pgdata:/var/lib/postgresql/data
     cpus: ${PG_CPUS:-2}
     mem_limit: 1g
@@ -43,6 +48,35 @@ services:
       interval: 2s
       retries: 60
     ports: ["5432:5432"]
+
+  # Async streaming replica. Only used when READ_FROM != primary (stages/replica.env),
+  # but always running so switching stages does not need a new base backup.
+  postgres-replica:
+    image: postgres:17-alpine
+    user: postgres
+    entrypoint: ["sh", "/replica-entrypoint.sh"]
+    command:
+      - -c
+      - shared_buffers=64MB
+      - -c
+      - max_connections=300                        # must be >= primary for hot standby
+      - -c
+      - recovery_min_apply_delay=${REPLICA_DELAY:-0}   # simulate a far (cross-region) replica
+    environment:
+      PGDATA: /var/lib/postgresql/data
+      REPLICATION_USER: lab        # superuser has REPLICATION; prod uses a dedicated role
+      REPLICATION_PASSWORD: lab
+    volumes:
+      - ./db/replica-entrypoint.sh:/replica-entrypoint.sh:ro
+      - pgreplica:/var/lib/postgresql/data
+    cpus: ${PG_REPLICA_CPUS:-2}
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lab -d lab"]
+      interval: 2s
+      retries: 120
+    depends_on:
+      postgres: { condition: service_healthy }
 
   redis:
     image: redis:8-alpine
@@ -55,6 +89,10 @@ services:
     command: ["node", "src/api.ts"]
     environment:
       PG_URL: postgres://lab:lab@postgres:5432/lab
+      PG_REPLICA_URL: postgres://lab:lab@postgres-replica:5432/lab
+      READ_FROM: ${READ_FROM:-primary}
+      RYW: ${RYW:-none}
+      RYW_WAIT_MS: ${RYW_WAIT_MS:-50}
       PG_POOL_MAX: ${PG_POOL_MAX:-10}
       REDIS_URL: redis://redis:6379
       CACHE_MODE: ${CACHE_MODE:-none}
@@ -65,6 +103,7 @@ services:
     mem_limit: 512m
     depends_on:
       postgres: { condition: service_healthy }
+      postgres-replica: { condition: service_healthy }
       redis: { condition: service_started }
 
   nginx:
@@ -92,6 +131,11 @@ services:
     environment:
       DATA_SOURCE_NAME: postgresql://lab:lab@postgres:5432/lab?sslmode=disable
     depends_on: [postgres]
+  postgres-replica-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.17.1
+    environment:
+      DATA_SOURCE_NAME: postgresql://lab:lab@postgres-replica:5432/lab?sslmode=disable
+    depends_on: [postgres-replica]
   redis-exporter:
     image: oliver006/redis_exporter:v1.74.0
     environment:
@@ -116,3 +160,4 @@ services:
 
 volumes:
   pgdata:
+  pgreplica:

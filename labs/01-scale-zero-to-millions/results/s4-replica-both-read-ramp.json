@@ -1,0 +1,14 @@
+{
+  "run": "s4-replica-both-read-ramp",
+  "target": "http://nginx",
+  "op": "read",
+  "mode": "ramp",
+  "rate_requested": 10000,
+  "rps_achieved": 4302.083001278375,
+  "p50": 122.490728,
+  "p95": 1025.0732183999994,
+  "p99": 2809.9558055599996,
+  "max": 4557.62566,
+  "error_rate": 0.19929496815423856,
+  "dropped_iterations": 199623
+}

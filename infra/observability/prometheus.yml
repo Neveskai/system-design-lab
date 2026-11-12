@@ -17,7 +17,7 @@ scrape_configs:
         port: 4000
         refresh_interval: 5s
   - job_name: postgres
-    static_configs: [{ targets: ["postgres-exporter:9187"] }]
+    static_configs: [{ targets: ["postgres-exporter:9187", "postgres-replica-exporter:9187"] }]
   - job_name: redis
     static_configs: [{ targets: ["redis-exporter:9121"] }]
   - job_name: nginx

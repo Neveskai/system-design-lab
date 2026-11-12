@@ -346,7 +346,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (instance) (db_pool_waiting)",
+     "expr": "sum by (instance,pool) (db_pool_waiting)",
      "legendFormat": "__auto"
     }
    ]
@@ -383,7 +383,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (instance) (db_pool_total - db_pool_idle)",
+     "expr": "sum by (instance,pool) (db_pool_total - db_pool_idle)",
      "legendFormat": "__auto"
     }
    ]
@@ -428,7 +428,7 @@
   {
    "id": 12,
    "type": "timeseries",
-   "title": "Postgres TPS",
+   "title": "Postgres TPS (primary / replica)",
    "datasource": {
     "type": "prometheus",
     "uid": "prom"
@@ -457,7 +457,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum(rate(pg_stat_database_xact_commit{datname=\"lab\"}[10s]))",
+     "expr": "sum by (instance) (rate(pg_stat_database_xact_commit{datname=\"lab\"}[10s]))",
      "legendFormat": "__auto"
     }
    ]
@@ -576,7 +576,7 @@
   {
    "id": 16,
    "type": "timeseries",
-   "title": "Container network TX",
+   "title": "Replication lag (replica, seconds)",
    "datasource": {
     "type": "prometheus",
     "uid": "prom"
@@ -586,6 +586,154 @@
     "w": 12,
     "x": 12,
     "y": 56
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s"
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "pg_replication_lag_seconds{instance=\"postgres-replica-exporter:9187\"}",
+     "legendFormat": "__auto"
+    }
+   ]
+  },
+  {
+   "id": 17,
+   "type": "timeseries",
+   "title": "Replication lag (WAL bytes held by slot)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 64
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes"
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "pg_replication_slots_pg_wal_lsn_diff",
+     "legendFormat": "__auto"
+    }
+   ]
+  },
+  {
+   "id": 18,
+   "type": "timeseries",
+   "title": "Doc reads by pool / reason",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 64
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ops"
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (pool,reason) (rate(db_reads_total[10s]))",
+     "legendFormat": "__auto"
+    }
+   ]
+  },
+  {
+   "id": 19,
+   "type": "timeseries",
+   "title": "Client view (k6): stale reads after write",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 72
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit"
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max(k6_stale_reads_rate)",
+     "legendFormat": "__auto"
+    }
+   ]
+  },
+  {
+   "id": 20,
+   "type": "timeseries",
+   "title": "Container network TX",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 72
    },
    "fieldConfig": {
     "defaults": {

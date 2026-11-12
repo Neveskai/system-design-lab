@@ -1,6 +1,6 @@
 # Lab 01 — Scale from zero to millions (cap. 1)
 
-Status: estágios **single → LB → cache** medidos. Pendentes: réplica de leitura, CDN/MinIO, fila + worker, sharding, chaos.
+Status: estágios **single → LB → cache → réplica de leitura** medidos. Pendentes: CDN/MinIO, fila + worker, sharding, chaos.
 
 Domínio usado: backend de um editor colaborativo. `documents` (100k docs de ~1 KB, 10k usuários), API de docs, BFF que monta a tela "workspace" (lista + 5 previews).
 
@@ -104,6 +104,48 @@ Lições:
 - Variância entre rodadas iguais (p99 99 ms × 367 ms): host compartilhado, GC, scheduler do WSL. Rodar cada experimento 3× antes de concluir algo sobre p99.
 - **Bug real encontrado:** 4–6% de 502. Log do nginx: `api could not be resolved` seguido de `no live upstreams`. Com `resolver valid=5s`, uma falha pontual do DNS do Docker sob carga esvaziou o pool de upstreams. Fix: `valid=30s` + `resolver_timeout 2s` → 0 erros. Mesmo problema existe em produção: TTL de DNS curto + resolver instável = indisponibilidade; ALB/Cloud Map/Envoy resolvem isso mantendo o último conjunto saudável.
 
+### E7 — Réplica de leitura (streaming replication assíncrona)
+Config: `stages/replica.env`. Primário + 1 réplica (`pg_basebackup` + slot `replica1`), ambos com 2 vCPU. `READ_FROM=both` alterna leituras entre primário e réplica (como o reader endpoint do Aurora); `READ_FROM=replica` manda todas as leituras para a réplica. Writes sempre no primário.
+
+**E7a — capacidade de leitura.** Carga constante, sem cache, `GET /docs/:id`.
+
+| config | rps pedido | rps entregue | erros | p50 | p99 | CPU primário | CPU réplica | gargalo |
+|---|---|---|---|---|---|---|---|---|
+| lb, 4 APIs, nginx 1 core | 4500 | 4431 | 0.04% | 8.7 ms | 282 ms | 1.90 | — | PG + nginx |
+| réplica, 4 APIs, nginx 1 core | 4500 | 4401 | 0% | 16.9 ms | 415 ms | 1.30 | 0.93 | **nginx (1.0/1)** |
+| lb, 4 APIs, nginx 2 cores | 5000 | 4660 | 0% | 153 ms | 774 ms | **1.97** | — | PG + API |
+| réplica, 4 APIs, nginx 2 cores | 5000 | 4760 | 0% | 30 ms | 537 ms | 1.28 | 1.05 | **CPU das APIs (~0.9/1)** |
+| lb, **6 APIs**, nginx 2 cores | 6000 | 4775 | **13.1%** | 457 ms | 1560 ms | **2.02** | — | **PG** |
+| réplica, **6 APIs**, nginx 2 cores | 6000 | **5875** | 0% | **8.6 ms** | **157 ms** | 1.24 | 1.23 | nenhum ainda (DB com folga) |
+
+Rampa até 10k (`READ_FROM=both`, 4 APIs, nginx 1 core): pico ~6.8k rps (E3 sem réplica: ~5.4k), mas com **20% de erro**: 118k `no live upstreams` + 15k `upstream timed out` no nginx.
+
+Lições:
+- **A réplica só aparece no resultado quando o DB é o gargalo.** Com nginx em 1 core ou APIs saturadas, primário e réplica dividiram a carga (1.9 → 1.3 + 0.9), mas os números do cliente não mudaram. Antes de comprar réplica, prove com USE que o DB é o recurso saturado.
+- Sem os outros gargalos (6 APIs, nginx 2 cores), a réplica levou o sistema de PG saturado com 13% de erro para 0 erro e p99 10× menor. Capacidade de leitura do DB ≈ soma de primário + réplicas.
+- **Cascata por health check passivo.** Na rampa, as APIs sobrecarregadas estouraram o `proxy_read_timeout` de 5 s. O `max_fails=3` então marcou as 4 réplicas como down, e o nginx passou a recusar tudo (`no live upstreams`) com as APIs ainda vivas. Sobrecarga virou indisponibilidade total. Mitigações: admission control na API (503 rápido em vez de timeout), timeout da API menor que o do LB, `max_fails` mais tolerante, health check ativo separado do tráfego.
+- O gargalo seguiu a ordem prevista: PG → nginx → CPU das APIs. Cada componente que ganha folga expõe o próximo.
+
+**E7b — read-your-writes.** `OP=ryw`: 30% das iterações fazem `PUT /docs/:id` e logo em seguida `GET` do mesmo doc; o k6 conta as leituras que voltam com `version` menor que a recém-escrita. 1500 iterações/s, `READ_FROM=replica`, sem cache. `REPLICA_DELAY` usa `recovery_min_apply_delay` para simular uma réplica distante.
+
+| atraso da réplica | estratégia `RYW` | leituras stale | p50 | p99 | custo |
+|---|---|---|---|---|---|
+| 0 (mesmo host, lag ~0.2 ms) | none | **28.1%** | 2.1 ms | 75 ms | — |
+| 100 ms | none | **99.9%** | 2.2 ms | 35 ms | — |
+| 100 ms | primary (após write, lê do primário) | 0% | 2.2 ms | 49 ms | 20k leituras no primário (30% das leituras) |
+| 100 ms | version (lê réplica; se `version` < esperada, relê no primário) | 0% | 2.5 ms | 106 ms | 2 leituras para cada leitura stale (19.5k releituras) |
+| 100 ms | lsn (espera a réplica aplicar o LSN do write, até 200 ms) | 0% | **17 ms** | 174 ms | **réplica 2.06/2 cores**: polling de 1 ms gerou 9.9k TPS para ~1.5k leituras reais |
+
+Lições:
+- **Lag "zero" não existe.** Na mesma máquina, com lag medido de 0.2 ms, 28% das leituras logo após o write vieram velhas. O cliente lê mais rápido do que o WAL é aplicado. Replicação assíncrona = consistência eventual, sempre.
+- Com réplica distante (100 ms), praticamente toda leitura após escrita é stale. Para o usuário: "salvei e a mudança sumiu".
+- **Cada estratégia tem um custo diferente:**
+  - `primary`: simples, mas joga no primário justamente o tráfego que a réplica deveria tirar dele. Em produção: janela de N segundos após o write (cookie/sessão).
+  - `version`: o cliente precisa conhecer a versão da entidade (um editor já conhece). Custa uma releitura só quando a réplica está atrasada.
+  - `lsn`: genérica (qualquer query, qualquer tabela), mas esperar por polling é caro: soma latência (p50 17 ms) e o polling satura a réplica. Melhor: checar uma vez e cair para o primário. PG 17 não tem espera nativa por LSN; outros bancos expõem *session tokens* ou *bounded staleness* para isso.
+- **A réplica cancela queries.** No modo `version` apareceram 72 erros `canceling statement due to conflict with recovery`: o replay do WAL (UPDATE em docs quentes + limpeza de versões antigas) removeu linhas que uma leitura na réplica ainda via. O fallback para o primário absorveu todos (0 erro no cliente). Ajustes: `max_standby_streaming_delay` (mais lag, menos cancelamentos) ou `hot_standby_feedback=on` (primário adia limpeza, mais bloat).
+- **Slot de replicação é armadilha operacional.** Com a réplica parada, o primário guarda todo WAL que ela não recebeu. Sem `max_slot_wal_keep_size` (aqui 1 GB) o disco do primário enche e as escritas param.
+
 ---
 
 ## 3. Mapa decisão × gargalo
@@ -118,6 +160,9 @@ Lições:
 | CPU-bound na API | — | event loop (todas as requests esperam) | event loop lag p99 |
 | BFF com fan-out | round trips do cliente (mobile/3G) | CPU do BFF, amplificação de cauda | CPU do BFF; p99 BFF ≫ p99 API |
 | DNS para service discovery | config estática de IPs | indisponibilidade em falha de DNS | 502 + `no live upstreams` |
+| Réplica de leitura assíncrona | CPU/IO de leitura do DB | consistência (stale reads), queries canceladas, WAL retido pelo slot | CPU por instância PG; `stale_reads`; `pg_replication_lag_seconds`; `conflict with recovery` |
+| Read-your-writes | dado "sumindo" após salvar | carga no primário (`primary`), releitura (`version`) ou espera/polling (`lsn`) | `db_reads_total{pool,reason}`; p50 do read-after-write |
+| Health check passivo no LB | tráfego para instância morta | cascata: sobrecarga marca todas as instâncias como down | `no live upstreams` com APIs vivas |
 
 ---
 
@@ -127,6 +172,9 @@ Lições:
 - **Escrita pesada** (`OP=write` ou `mixed`): cache vira custo (invalidar a cada write); gargalo vai para WAL/fsync e locks de linha. Testar `PG_SYNC_COMMIT=off` (perde últimos ms em crash) para ver o custo do fsync. Em editor colaborativo, writes vêm em rajadas por documento: agrupar ops no servidor (batch a cada 100–500 ms) em vez de 1 UPDATE por tecla.
 - **Payload grande** (docs de 1 MB): gargalo vira rede e serialização (CPU de JSON). Alternativas: paginação, compressão, enviar só delta, armazenar body em S3 e metadados no DB.
 - **Hot key extremo** (1 doc com 50% do tráfego, ex.: doc compartilhado com 10k leitores): ativar `CACHE_SINGLEFLIGHT=1`, cache local em memória (L1) com TTL de 1 s antes do Redis (L2).
+- **Cache + réplica juntos (bug clássico, ainda não medido)**: o write invalida o cache; a próxima leitura faz miss, lê a réplica atrasada e **grava o valor velho no cache pelo TTL inteiro**. Stale de milissegundos vira stale de 30 s. Correções: popular o cache a partir do primário após o write (write-through); invalidar de novo depois de um atraso maior que o lag (*delayed double delete*); ou guardar a versão no cache e recusar versões menores.
+- **Mais réplicas**: leitura escala quase linear até o primário virar gargalo (cada réplica é mais um walsender e mais rede de saída). Escrita não escala com réplicas: para isso, sharding ou batching.
+- **Réplica síncrona** (`synchronous_standby_names` + `synchronous_commit=remote_apply`): read-your-writes garantido, mas cada commit espera um round trip até a réplica (entre AZs +1–2 ms; entre regiões +60–150 ms). Testável aqui comparando p99 de `OP=write`.
 - **Multi-região**: latência entre regiões de 60–150 ms muda tudo. Leitura local com réplica regional; escrita no primário (ou multi-primário com CRDT — caso do editor colaborativo).
 
 ---
@@ -141,6 +189,10 @@ Lições:
 | Postgres 2 vCPU | RDS db.m7g.large / Aurora | IOPS de EBS (gp3 3000 baseline) e rede da instância também viram teto |
 | Redis | ElastiCache (Redis/Valkey) | cluster mode para escalar escrita; réplicas para leitura e failover |
 | DNS do Docker | Route 53 / Cloud Map | TTLs e health checks; mesmo problema do E6 em escala |
+| `postgres-replica` (streaming, slot) | RDS read replica / Aurora Replica | RDS: réplica assíncrona, lag de segundos sob carga de escrita. Aurora: réplicas leem o mesmo storage, lag típico < 20 ms, até 15 réplicas |
+| `READ_FROM=both` | Aurora reader endpoint | balanceia por DNS entre réplicas; o app precisa de 2 pools (writer e reader) e decide por query |
+| `RYW` (version/lsn) | DynamoDB `ConsistentRead`; Cosmos DB session consistency | DynamoDB cobra 2× por leitura fortemente consistente: a mesma troca de custo do E7b |
+| `REPLICA_DELAY=100ms` | réplica cross-region (Aurora Global Database, lag ~1 s) | leitura local rápida; escrita sempre na região primária |
 | rede bridge local (~0.05 ms) | mesma AZ ~0.1–0.3 ms, entre AZs ~0.5–2 ms | multi-AZ dobra round trips caros; testar com toxiproxy (próximo estágio) |
 | Prometheus/Grafana | CloudWatch / Managed Prometheus + Grafana | métricas de 1 min no CloudWatch padrão escondem picos de segundos |
 
@@ -153,13 +205,14 @@ Lições:
 - **BFF fan-out ↔ waterfall de componentes.** `await` encadeado em componentes aninhados é o `FANOUT=serial`. O BFF move o waterfall para uma rede de 0.1 ms em vez de 50–200 ms do usuário — mas paga CPU por isso (E6).
 - **Event loop lag ↔ long tasks no browser.** Mesma causa (trabalho síncrono longo), mesma métrica (lag/INP), mesmas soluções (dividir trabalho, workers).
 - **LB stateless ↔ servidor de colaboração stateful.** Editor colaborativo precisa que todos os clientes de um doc caiam no mesmo processo (estado do doc em memória, CRDT/OT). Isso é *sticky routing por documento* — o oposto do web tier stateless do livro. Solução comum: roteamento por hash do docId (consistent hashing, cap. 5) + pub/sub entre nós. Lab futuro (chat system, cap. 12).
+- **Read-your-writes ↔ UI otimista + versão.** O E7b é o bug "salvei e voltou o texto antigo" que aparece ao refazer o fetch logo após uma mutation. No cliente a solução é a mesma da estratégia `version`: manter o estado otimista até o servidor devolver `version >= a minha`. Em CRDT/OT, o vetor de versões (ou o número da última op) é exatamente o token que diz se uma réplica está em dia.
 - **Sharding por usuário ↔ particionar por documento/room.** A chave de partição natural de um editor é o documento; hotspot = doc viral.
 
 ---
 
 ## 7. Próximos estágios deste lab
 
-1. Réplica de leitura PG (streaming replication): medir lag de replicação e quebrar *read-your-writes* de propósito.
+1. ~~Réplica de leitura PG~~ (E7). Faltam: cache + réplica (valor velho no cache), réplica síncrona, matar a réplica sob carga.
 2. MinIO como S3 + nginx como CDN para assets estáticos.
 3. Fila (Redis Streams) + worker para `/render`: comparar com E5.
 4. Sharding manual (2 PGs, `owner_id % 2`): hotspot e query cross-shard.

@@ -1,0 +1,15 @@
+{
+  "run": "e7-ryw-none-delay100",
+  "target": "http://nginx",
+  "op": "ryw",
+  "mode": "constant",
+  "rate_requested": 1500,
+  "rps_achieved": 1954.0947877034698,
+  "p50": 2.1606345,
+  "p95": 13.017462999999994,
+  "p99": 34.93048661000006,
+  "max": 285.205706,
+  "error_rate": 0,
+  "dropped_iterations": 0,
+  "stale_reads": 0.9990220527113589
+}

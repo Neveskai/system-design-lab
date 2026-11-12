@@ -1,0 +1,14 @@
+{
+  "run": "c4-replica-read-4500",
+  "target": "http://nginx",
+  "op": "read",
+  "mode": "constant",
+  "rate_requested": 4500,
+  "rps_achieved": 4401.468741179995,
+  "p50": 16.904848,
+  "p95": 163.3586515,
+  "p99": 414.7846547000005,
+  "max": 2911.618163,
+  "error_rate": 0,
+  "dropped_iterations": 5309
+}

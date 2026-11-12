@@ -1,0 +1,14 @@
+{
+  "run": "c4-lb-api6-nginx2-read-6000",
+  "target": "http://nginx",
+  "op": "read",
+  "mode": "constant",
+  "rate_requested": 6000,
+  "rps_achieved": 4774.839132478483,
+  "p50": 457.039035,
+  "p95": 884.041005,
+  "p99": 1560.3591186499998,
+  "max": 3647.95514,
+  "error_rate": 0.1309737941721781,
+  "dropped_iterations": 70908
+}
