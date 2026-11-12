@@ -1,0 +1,14 @@
+{
+  "run": "s3-cache-read-ramp",
+  "target": "http://nginx",
+  "op": "read",
+  "mode": "ramp",
+  "rate_requested": 12000,
+  "rps_achieved": 5422.670515762001,
+  "p50": 115.303365,
+  "p95": 526.7575678999991,
+  "p99": 837.7137245999983,
+  "max": 1689.606901,
+  "error_rate": 0,
+  "dropped_iterations": 185022
+}

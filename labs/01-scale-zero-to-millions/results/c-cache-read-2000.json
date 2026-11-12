@@ -1,0 +1,14 @@
+{
+  "run": "c-cache-read-2000",
+  "target": "http://nginx",
+  "op": "read",
+  "mode": "constant",
+  "rate_requested": 2000,
+  "rps_achieved": 2000.1000276519492,
+  "p50": 1.213791,
+  "p95": 2.6327657499999995,
+  "p99": 7.454262400000031,
+  "max": 175.600683,
+  "error_rate": 0,
+  "dropped_iterations": 0
+}

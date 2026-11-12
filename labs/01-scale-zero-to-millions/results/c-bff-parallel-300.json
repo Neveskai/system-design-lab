@@ -1,0 +1,14 @@
+{
+  "run": "c-bff-parallel-300",
+  "target": "http://bff:4000",
+  "op": "bff",
+  "mode": "constant",
+  "rate_requested": 300,
+  "rps_achieved": 261.30188452840395,
+  "p50": 777.692509,
+  "p95": 11156.711381299998,
+  "p99": 34517.17596644,
+  "max": 38177.431145,
+  "error_rate": 0,
+  "dropped_iterations": 646
+}

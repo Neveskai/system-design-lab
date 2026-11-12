@@ -1,0 +1,14 @@
+{
+  "run": "s1-single-read-ramp",
+  "target": "http://api:3000",
+  "op": "read",
+  "mode": "ramp",
+  "rate_requested": 6000,
+  "rps_achieved": 2307.5304242146076,
+  "p50": 158.733445,
+  "p95": 1361.3821646,
+  "p99": 1647.7889766799997,
+  "max": 4793.216313,
+  "error_rate": 0,
+  "dropped_iterations": 135896
+}

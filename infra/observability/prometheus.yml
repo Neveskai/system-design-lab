@@ -1,0 +1,26 @@
+global:
+  scrape_interval: 2s       # short interval: load tests last minutes, not days
+  evaluation_interval: 2s
+
+scrape_configs:
+  # One A record per replica => one target per replica.
+  - job_name: api
+    dns_sd_configs:
+      - names: [api]
+        type: A
+        port: 3000
+        refresh_interval: 5s
+  - job_name: bff
+    dns_sd_configs:
+      - names: [bff]
+        type: A
+        port: 4000
+        refresh_interval: 5s
+  - job_name: postgres
+    static_configs: [{ targets: ["postgres-exporter:9187"] }]
+  - job_name: redis
+    static_configs: [{ targets: ["redis-exporter:9121"] }]
+  - job_name: nginx
+    static_configs: [{ targets: ["nginx-exporter:9113"] }]
+  - job_name: containers
+    static_configs: [{ targets: ["docker-stats:8080"] }]

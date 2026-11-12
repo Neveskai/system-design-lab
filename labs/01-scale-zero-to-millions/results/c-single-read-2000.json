@@ -1,0 +1,14 @@
+{
+  "run": "c-single-read-2000",
+  "target": "http://api:3000",
+  "op": "read",
+  "mode": "constant",
+  "rate_requested": 2000,
+  "rps_achieved": 1974.9220812986,
+  "p50": 0.7234849999999999,
+  "p95": 276.0004618,
+  "p99": 620.2422345199952,
+  "max": 2852.669965,
+  "error_rate": 0,
+  "dropped_iterations": 1006
+}

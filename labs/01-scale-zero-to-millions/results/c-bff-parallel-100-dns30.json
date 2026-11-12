@@ -1,0 +1,14 @@
+{
+  "run": "c-bff-parallel-100-dns30",
+  "target": "http://bff:4000",
+  "op": "bff",
+  "mode": "constant",
+  "rate_requested": 100,
+  "rps_achieved": 99.95159660689717,
+  "p50": 6.0394915000000005,
+  "p95": 74.94340895000008,
+  "p99": 367.4040515000005,
+  "max": 847.024337,
+  "error_rate": 0,
+  "dropped_iterations": 0
+}

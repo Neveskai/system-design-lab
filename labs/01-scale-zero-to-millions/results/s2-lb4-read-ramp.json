@@ -1,0 +1,14 @@
+{
+  "run": "s2-lb4-read-ramp",
+  "target": "http://nginx",
+  "op": "read",
+  "mode": "ramp",
+  "rate_requested": 10000,
+  "rps_achieved": 4113.756542737511,
+  "p50": 322.015166,
+  "p95": 776.9116618499996,
+  "p99": 942.8564359300002,
+  "max": 1162.893866,
+  "error_rate": 0,
+  "dropped_iterations": 197530
+}

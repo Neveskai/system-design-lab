@@ -1,0 +1,14 @@
+{
+  "run": "c-bff-serial-300",
+  "target": "http://bff:4000",
+  "op": "bff",
+  "mode": "constant",
+  "rate_requested": 300,
+  "rps_achieved": 283.44591265069215,
+  "p50": 568.8996165,
+  "p95": 7544.412289500001,
+  "p99": 23118.31934505,
+  "max": 24121.569396,
+  "error_rate": 0,
+  "dropped_iterations": 517
+}

@@ -1,0 +1,118 @@
+# Lab 01: scale from zero to millions.
+# Do not call this file directly: use scripts/run.sh <stage> <scenario>.
+# Stage knobs come from stages/<stage>.env (replicas, cache mode, pool size, target).
+#
+# Resource limits mimic small cloud instances so the bottleneck is visible
+# (and so 12 host threads are not shared by everything without rules).
+name: lab01
+
+include:
+  - ../../infra/observability/compose.yml
+
+x-app: &app
+  build:
+    context: ../..
+    dockerfile: labs/01-scale-zero-to-millions/app/Dockerfile
+  image: lab01-app:latest
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: lab
+      POSTGRES_PASSWORD: lab
+      POSTGRES_DB: lab
+    command:
+      - postgres
+      - -c
+      - shared_buffers=64MB          # small on purpose; see db/init.sql
+      - -c
+      - max_connections=300
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - synchronous_commit=${PG_SYNC_COMMIT:-on}   # off = faster writes, lose last ms on crash
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - pgdata:/var/lib/postgresql/data
+    cpus: ${PG_CPUS:-2}
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lab -d lab"]
+      interval: 2s
+      retries: 60
+    ports: ["5432:5432"]
+
+  redis:
+    image: redis:8-alpine
+    command: ["redis-server", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru", "--save", ""]
+    cpus: 1
+    mem_limit: 256m
+
+  api:
+    <<: *app
+    command: ["node", "src/api.ts"]
+    environment:
+      PG_URL: postgres://lab:lab@postgres:5432/lab
+      PG_POOL_MAX: ${PG_POOL_MAX:-10}
+      REDIS_URL: redis://redis:6379
+      CACHE_MODE: ${CACHE_MODE:-none}
+      CACHE_TTL_S: ${CACHE_TTL_S:-30}
+      CACHE_SINGLEFLIGHT: ${CACHE_SINGLEFLIGHT:-0}
+      RENDER_ITER: ${RENDER_ITER:-200}
+    cpus: ${API_CPUS:-1}           # ~ 1 vCPU instance per replica
+    mem_limit: 512m
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }
+
+  nginx:
+    image: nginx:1.29-alpine
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    cpus: ${NGINX_CPUS:-1}       # ~ LB capacity (ALB scales this for you; nginx on EC2 does not)
+    depends_on: [api]
+
+  bff:
+    <<: *app
+    command: ["node", "src/bff.ts"]
+    environment:
+      PORT: 4000
+      API_URL: http://nginx
+      FANOUT: ${FANOUT:-parallel}
+      PREVIEWS: ${PREVIEWS:-5}
+    cpus: 1
+    mem_limit: 512m
+    depends_on: [nginx]
+
+  # ---- exporters (USE metrics for each resource) ----
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.17.1
+    environment:
+      DATA_SOURCE_NAME: postgresql://lab:lab@postgres:5432/lab?sslmode=disable
+    depends_on: [postgres]
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.74.0
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    depends_on: [redis]
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.4.2
+    command: ["--nginx.scrape-uri=http://nginx:8080/stub_status"]
+    depends_on: [nginx]
+
+  # ---- load generator (only via `docker compose run`) ----
+  k6:
+    image: grafana/k6:1.1.0
+    profiles: ["tools"]
+    cpus: ${K6_CPUS:-3}
+    environment:
+      K6_PROMETHEUS_RW_SERVER_URL: http://prometheus:9090/api/v1/write
+      K6_PROMETHEUS_RW_TREND_STATS: p(50),p(95),p(99),max
+    volumes:
+      - ./load:/load:ro
+      - ./results:/results
+
+volumes:
+  pgdata:
