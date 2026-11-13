@@ -1,11 +1,13 @@
 // Cloud prices and cost helpers shared by systems.ts (chapter 2 cases) and stages.ts (chapter 1 stages).
-// AWS list prices, us-east-1, on-demand, as on the 2025 price pages [R], quoted from memory: verify on the day.
+// AWS list prices, us-east-1, on-demand [R]. Checked on 2026-11-13 against third-party price trackers
+// (Vantage, DoiT, Sparecores, Bytebase, pricing blogs): all values below match. Not checked on aws.amazon.com itself.
+// Free tiers (100 GB egress, 1 TB CloudFront, 1M SQS requests per month) are ignored.
 // Savings plans / reserved instances cut ~30-50%; CDN and egress contracts at PB scale cut more.
 
 export const HOURS_PER_MONTH = 730, SEC_PER_MONTH = HOURS_PER_MONTH * 3600;
 export const PRICE = {
   ec2C7gXlargeHour: 0.145,    // EC2 c7g.xlarge, 4 vCPU, 8 GiB (c7g is linear: $0.03625 per vCPU-hour)
-  cacheR7gLargeHour: 0.219,   // ElastiCache cache.r7g.large, 13 GiB
+  cacheR7gLargeHour: 0.219,   // ElastiCache cache.r7g.large, 13 GiB, Redis OSS (Valkey is ~20% cheaper)
   cacheR7gXlargeHour: 0.437,  // ElastiCache cache.r7g.xlarge, 26 GiB
   rdsGp3GbMonth: 0.115,       // RDS gp3, per copy (Multi-AZ standby and each read replica hold a full copy)
   s3StandardGbMonth: 0.021,   // S3 Standard, tier above 500 TB (0.023 for the first 50 TB)
