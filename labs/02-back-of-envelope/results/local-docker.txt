@@ -1,0 +1,32 @@
+ Container lab02-postgres-1 Running 
+ Container lab02-toxiproxy-1 Running 
+ Container lab02-server-1 Running 
+ Container lab02-redis-1 Running 
+ Container lab02-postgres-1 Waiting 
+ Container lab02-postgres-1 Healthy 
+ Container lab02-bench-run-5fd232505ca2 Creating 
+ Container lab02-bench-run-5fd232505ca2 Created 
+
+docker-linux: 13th Gen Intel(R) Core(TM) i5-13420H, 12 threads, node v24.22.3
+memory random read, working set 16 KB (L1)             1.36 ns/op
+memory random read, working set 512 KB (L2)            4.72 ns/op
+memory random read, working set 6 MB (L3)               108 ns/op
+memory random read, working set 256 MB (DRAM)           256 ns/op
+memory sequential read                                 9.06 GB/s
+read 1 MB sequentially from memory                      116 µs
+payload size (6000 rows JSON)                         0.941 MB
+JSON.parse                                             3.69 ms/MB
+JSON.stringify                                         2.98 ms/MB
+sha256                                                0.585 ms/MB
+gzip level 1 compress                                  8.12 ms/MB  (ratio 3.6x)
+gzip level 6 compress                                  14.6 ms/MB  (ratio 3.8x)
+brotli q4 compress                                     14.1 ms/MB  (ratio 3.8x)
+gzip decompress                                        2.87 ms/MB (uncompressed)
+zstd default compress                                  3.59 ms/MB  (ratio 3.8x)
+HMAC-SHA256 of 600 B token (HS256 verify)              3.15 µs
+RSA-2048 verify (RS256 verify)                         22.6 µs
+write 4 KB + fsync (commit latency)                    1500 µs  (what a DB pays per durable commit)
+sequential write 512 MB + fsync                        1.02 GB/s
+sequential read 1 MB (page cache)                       109 µs
+random read 4 KB (page cache, pread syscall)           1.08 µs
+setImmediate round trip (event loop turn)             0.949 µs

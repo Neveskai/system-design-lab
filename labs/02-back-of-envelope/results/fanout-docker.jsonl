@@ -1,0 +1,5 @@
+{"name":"fanout LPUSH+LTRIM","batch":1,"writes":120443,"writes_per_sec":24092,"worker_us_per_write":44.13,"redis_us_per_write":21.76,"redis_cores":0.52}
+{"name":"fanout LPUSH+LTRIM","batch":10,"writes":625580,"writes_per_sec":125162,"worker_us_per_write":11.03,"redis_us_per_write":4.83,"redis_cores":0.6}
+{"name":"fanout LPUSH+LTRIM","batch":100,"writes":940400,"writes_per_sec":188003,"worker_us_per_write":8.76,"redis_us_per_write":2.7,"redis_cores":0.51}
+{"name":"fanout LPUSH+LTRIM","batch":1000,"writes":1049000,"writes_per_sec":209357,"worker_us_per_write":8.18,"redis_us_per_write":2.25,"redis_cores":0.47}
+{"name":"timeline read LRANGE 50 + MGET 50","batch":10,"reads":73820,"reads_per_sec":14763,"worker_us_per_read":86.25,"redis_us_per_read":52.37,"redis_cores":0.77}

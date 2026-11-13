@@ -1,5 +1,21 @@
 # Método de medição
 
+## Padrão de análise de cada capítulo
+
+Todo capítulo do livro segue a mesma linha, do desenho até a conta mensal:
+
+1. **Premissas ancoradas em dado público.** Cada premissa traz a fonte (ex.: Twitter 2013, 500M tweets/dia; Pew 2019, mediana de 2 tweets/mês). Razão por usuário transfere entre empresas; número absoluto de infra não transfere. Chute só quando não há referência, e marcado como chute.
+2. **Origem de cada número:** [P] premissa de produto, [M] medido neste lab, [R] livro, fornecedor ou referência pública, [E] estimativa ainda não medida. Cada [E] vira item de experimento.
+3. **Carga de trabalho explícita.** Nenhum "X writes/s" sem dizer: motor (PG, MySQL, Mongo, Cassandra, DynamoDB), B-tree ou LSM, índices, tipo de chave (sequencial ou aleatória), unique, modo de commit, batch, replicação, linha quente. Um teto de vazão vale só para aquela carga.
+4. **Cadeia de contas:** premissa, tráfego (média e pico), carga por componente, instâncias a 60% de utilização (N+1 de AZ), storage, banda, latência.
+5. **Custo por mês em cada escala.** A mesma premissa por usuário em 3–4 ordens de grandeza (ex.: 1M, 10M, 100M, 300M MAU). Em cada decisão, a opção mais barata que aguenta a carga e o preço da opção rejeitada ao lado. Incluir rede (saída para a internet, CDN, tráfego entre AZs, LB por GB), não só compute.
+6. **Comparar com o desenho do livro** na mesma carga, para mostrar quanto custa superdimensionar.
+7. **Gatilhos de mudança:** o número medido que faz trocar de arquitetura (ex.: "shard quando a escrita passar de 60% do maior primário"), não "quando crescer".
+8. **Sensibilidade:** a decisão aguenta errar 3× nas premissas de tráfego?
+9. **O que ficou fora da conta:** tempo de engenharia, observabilidade, backups, staging. Preço de tabela, data e "conferir no dia".
+
+Relatório (NOTES.md): tabela por escala (total/mês, US$ por MAU, maior item), depois as conclusões em bullets curtos com o número que justifica cada uma. Código: `labs/02-back-of-envelope/prices.ts` (preços e helpers), `systems.ts` (seções `A$`/`B$`), `stages.ts` (cap. 1).
+
 ## Perguntas em cada experimento
 1. **Qual recurso satura primeiro?** (o gargalo)
 2. **Onde está a fila?** (onde o tempo é gasto esperando, não trabalhando)

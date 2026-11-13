@@ -6,8 +6,8 @@ Laboratório local para estudar os capítulos de *System Design Interview* (Alex
 
 | cap. | lab | status |
 |---|---|---|
-| 1 | [Scale from zero to millions](labs/01-scale-zero-to-millions/NOTES.md) | single → LB → cache → réplica → S3 + CDN → fila medidos; sharding/chaos pendentes |
-| 2 | Back-of-the-envelope estimation | pendente |
+| 1 | [Scale from zero to millions](labs/01-scale-zero-to-millions/NOTES.md) | single → LB → cache → réplica → S3 + CDN → fila medidos; sharding pendente (chaos no lab 02) |
+| 2 | [Back-of-the-envelope estimation](labs/02-back-of-envelope/NOTES.md) | latência local/rede medida, teto do lab 01 previsto × medido, disponibilidade com chaos |
 | 4 | Rate limiter | pendente |
 | 5 | Consistent hashing | pendente |
 | 12, 15, 11 | Chat, Google Drive, News feed | depois da fundação |

@@ -1,0 +1,6 @@
+batch    1     24092 writes/s  worker 44.13 µs/write  redis 21.76 µs/write  redis 0.52 cores
+batch   10    125162 writes/s  worker 11.03 µs/write  redis 4.83 µs/write  redis 0.6 cores
+batch  100    188003 writes/s  worker 8.76 µs/write  redis 2.7 µs/write  redis 0.51 cores
+batch 1000    209357 writes/s  worker 8.18 µs/write  redis 2.25 µs/write  redis 0.47 cores
+read        14763 reads/s   client 86.25 µs/read   redis 52.37 µs/read   redis 0.77 cores
+redis used_memory_human: 126.34M

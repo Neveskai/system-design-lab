@@ -1,0 +1,16 @@
+{
+  "run": "chaos-pause-api",
+  "target": "http://nginx",
+  "op": "read",
+  "mode": "constant",
+  "rate_requested": 1500,
+  "rps_achieved": 1500.0768372237344,
+  "p50": 1.782439,
+  "p95": 6.528784,
+  "p99": 24.592854,
+  "max": 5029.416246,
+  "error_rate": 0,
+  "dropped_iterations": 0,
+  "iterations_rate": 1500.0768372237344,
+  "mbytes_per_s": 1.9821529240910043
+}

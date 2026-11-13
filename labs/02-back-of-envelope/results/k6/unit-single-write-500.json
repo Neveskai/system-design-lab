@@ -1,0 +1,16 @@
+{
+  "run": "unit-single-write-500",
+  "target": "http://api:3000",
+  "op": "write",
+  "mode": "constant",
+  "rate_requested": 500,
+  "rps_achieved": 500.02407758185666,
+  "p50": 2.502149,
+  "p95": 9.352328,
+  "p99": 31.718561,
+  "max": 109.60337,
+  "error_rate": 0,
+  "dropped_iterations": 0,
+  "iterations_rate": 500.02407758185666,
+  "mbytes_per_s": 0.11070385742145294
+}

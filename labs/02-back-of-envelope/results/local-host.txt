@@ -1,0 +1,24 @@
+
+host-windows: 13th Gen Intel(R) Core(TM) i5-13420H, 12 threads, node v26.13.0
+memory random read, working set 16 KB (L1)             1.19 ns/op
+memory random read, working set 512 KB (L2)            4.66 ns/op
+memory random read, working set 6 MB (L3)              65.9 ns/op
+memory random read, working set 256 MB (DRAM)           249 ns/op
+memory sequential read                                 2.77 GB/s
+read 1 MB sequentially from memory                      379 µs
+payload size (6000 rows JSON)                         0.941 MB
+JSON.parse                                             5.63 ms/MB
+JSON.stringify                                          6.4 ms/MB
+sha256                                                0.889 ms/MB
+gzip level 1 compress                                  22.4 ms/MB  (ratio 3.5x)
+gzip level 6 compress                                  44.4 ms/MB  (ratio 3.8x)
+brotli q4 compress                                     31.2 ms/MB  (ratio 3.8x)
+gzip decompress                                        6.43 ms/MB (uncompressed)
+zstd default compress                                  10.9 ms/MB  (ratio 3.8x)
+HMAC-SHA256 of 600 B token (HS256 verify)              8.85 µs
+RSA-2048 verify (RS256 verify)                          104 µs
+write 4 KB + fsync (commit latency)                     478 µs  (what a DB pays per durable commit)
+sequential write 512 MB + fsync                        1.12 GB/s
+sequential read 1 MB (page cache)                       245 µs
+random read 4 KB (page cache, pread syscall)           5.37 µs
+setImmediate round trip (event loop turn)             0.733 µs

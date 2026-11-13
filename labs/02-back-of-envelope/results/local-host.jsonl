@@ -1,0 +1,22 @@
+{"label":"host-windows","name":"memory random read, working set 16 KB (L1)","value":1.19,"unit":"ns/op"}
+{"label":"host-windows","name":"memory random read, working set 512 KB (L2)","value":4.66,"unit":"ns/op"}
+{"label":"host-windows","name":"memory random read, working set 6 MB (L3)","value":65.9,"unit":"ns/op"}
+{"label":"host-windows","name":"memory random read, working set 256 MB (DRAM)","value":249,"unit":"ns/op"}
+{"label":"host-windows","name":"memory sequential read","value":2.77,"unit":"GB/s"}
+{"label":"host-windows","name":"read 1 MB sequentially from memory","value":379,"unit":"µs"}
+{"label":"host-windows","name":"payload size (6000 rows JSON)","value":0.941,"unit":"MB"}
+{"label":"host-windows","name":"JSON.parse","value":5.63,"unit":"ms/MB"}
+{"label":"host-windows","name":"JSON.stringify","value":6.4,"unit":"ms/MB"}
+{"label":"host-windows","name":"sha256","value":0.889,"unit":"ms/MB"}
+{"label":"host-windows","name":"gzip level 1 compress","value":22.4,"unit":"ms/MB","note":"ratio 3.5x"}
+{"label":"host-windows","name":"gzip level 6 compress","value":44.4,"unit":"ms/MB","note":"ratio 3.8x"}
+{"label":"host-windows","name":"brotli q4 compress","value":31.2,"unit":"ms/MB","note":"ratio 3.8x"}
+{"label":"host-windows","name":"gzip decompress","value":6.43,"unit":"ms/MB (uncompressed)"}
+{"label":"host-windows","name":"zstd default compress","value":10.9,"unit":"ms/MB","note":"ratio 3.8x"}
+{"label":"host-windows","name":"HMAC-SHA256 of 600 B token (HS256 verify)","value":8.85,"unit":"µs"}
+{"label":"host-windows","name":"RSA-2048 verify (RS256 verify)","value":104,"unit":"µs"}
+{"label":"host-windows","name":"write 4 KB + fsync (commit latency)","value":478,"unit":"µs","note":"what a DB pays per durable commit"}
+{"label":"host-windows","name":"sequential write 512 MB + fsync","value":1.12,"unit":"GB/s"}
+{"label":"host-windows","name":"sequential read 1 MB (page cache)","value":245,"unit":"µs"}
+{"label":"host-windows","name":"random read 4 KB (page cache, pread syscall)","value":5.37,"unit":"µs"}
+{"label":"host-windows","name":"setImmediate round trip (event loop turn)","value":0.733,"unit":"µs"}

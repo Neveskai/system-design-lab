@@ -1,0 +1,16 @@
+{
+  "run": "chaos-stop-pg",
+  "target": "http://nginx",
+  "op": "read",
+  "mode": "constant",
+  "rate_requested": 1500,
+  "rps_achieved": 1390.9751872533755,
+  "p50": 1.7513,
+  "p95": 5000.317287,
+  "p99": 5001.8477642,
+  "max": 5073.451042,
+  "error_rate": 0.3570649764560693,
+  "dropped_iterations": 6540,
+  "iterations_rate": 1390.9751872533755,
+  "mbytes_per_s": 1.336952698224707
+}

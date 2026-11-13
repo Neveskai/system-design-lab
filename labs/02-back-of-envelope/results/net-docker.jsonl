@@ -1,0 +1,72 @@
+{"label":"docker","profile":"direct","name":"TCP connect (SYN, SYN-ACK)","p50":0.71,"p99":1.6,"n":1000}
+{"label":"docker","profile":"direct","name":"TCP 1-byte round trip, open socket","p50":0.104,"p99":0.549,"n":1000}
+{"label":"docker","profile":"direct","name":"HTTP GET, new connection","p50":1.36,"p99":2.86,"n":1000}
+{"label":"docker","profile":"direct","name":"HTTP GET, keep-alive","p50":0.27,"p99":1.19,"n":1000}
+{"label":"docker","profile":"direct","name":"TLS 1.3 connect (TCP + full handshake)","p50":3.01,"p99":5.94,"n":1000}
+{"label":"docker","profile":"direct","name":"TLS 1.3 connect, session resumed","p50":2.95,"p99":5.74,"n":1000}
+{"label":"docker","profile":"direct","name":"HTTPS GET, new connection","p50":4.18,"p99":7.01,"n":1000}
+{"label":"docker","profile":"direct","name":"HTTPS GET, keep-alive","p50":0.362,"p99":1.35,"n":1000}
+{"label":"docker","profile":"direct","name":"Redis GET","p50":0.0867,"p99":0.507,"n":1000}
+{"label":"docker","profile":"direct","name":"Redis 10 GETs, sequential","p50":1.26,"p99":3.41,"n":1000}
+{"label":"docker","profile":"direct","name":"Redis 10 keys, MGET","p50":0.1,"p99":0.407,"n":1000}
+{"label":"docker","profile":"direct","name":"Redis 10 GETs, pipelined","p50":0.134,"p99":0.474,"n":1000}
+{"label":"docker","profile":"direct","name":"PG new connection (TCP + SCRAM auth)","p50":8.89,"p99":19.3,"n":1000}
+{"label":"docker","profile":"direct","name":"PG SELECT 1","p50":0.0785,"p99":0.519,"n":1000}
+{"label":"docker","profile":"direct","name":"PG SELECT by primary key","p50":0.212,"p99":0.877,"n":1000}
+{"label":"docker","profile":"direct","name":"PG INSERT + commit (fsync)","p50":1.06,"p99":3.18,"n":1000}
+{"label":"docker","profile":"direct","name":"PG 10 rows, 10 queries (N+1)","p50":2.83,"p99":8.11,"n":1000}
+{"label":"docker","profile":"direct","name":"PG 10 rows, 1 query (= ANY)","p50":0.367,"p99":1.25,"n":1000}
+{"label":"docker","profile":"proxy","name":"TCP connect (SYN, SYN-ACK)","p50":0.803,"p99":1.74,"n":1000}
+{"label":"docker","profile":"proxy","name":"TCP 1-byte round trip, open socket","p50":0.241,"p99":0.783,"n":1000}
+{"label":"docker","profile":"proxy","name":"HTTP GET, new connection","p50":2.6,"p99":4.18,"n":1000}
+{"label":"docker","profile":"proxy","name":"HTTP GET, keep-alive","p50":0.448,"p99":1.47,"n":1000}
+{"label":"docker","profile":"proxy","name":"TLS 1.3 connect (TCP + full handshake)","p50":4.48,"p99":7.99,"n":1000}
+{"label":"docker","profile":"proxy","name":"TLS 1.3 connect, session resumed","p50":4.26,"p99":7.48,"n":1000}
+{"label":"docker","profile":"proxy","name":"HTTPS GET, new connection","p50":6.27,"p99":11.2,"n":1000}
+{"label":"docker","profile":"proxy","name":"HTTPS GET, keep-alive","p50":0.694,"p99":1.89,"n":1000}
+{"label":"docker","profile":"proxy","name":"Redis GET","p50":0.325,"p99":0.91,"n":1000}
+{"label":"docker","profile":"proxy","name":"Redis 10 GETs, sequential","p50":2.99,"p99":6.09,"n":1000}
+{"label":"docker","profile":"proxy","name":"Redis 10 keys, MGET","p50":0.478,"p99":1.6,"n":1000}
+{"label":"docker","profile":"proxy","name":"Redis 10 GETs, pipelined","p50":0.462,"p99":1.37,"n":1000}
+{"label":"docker","profile":"proxy","name":"PG new connection (TCP + SCRAM auth)","p50":9.35,"p99":15.9,"n":1000}
+{"label":"docker","profile":"proxy","name":"PG SELECT 1","p50":0.312,"p99":1.13,"n":1000}
+{"label":"docker","profile":"proxy","name":"PG SELECT by primary key","p50":0.491,"p99":1.67,"n":1000}
+{"label":"docker","profile":"proxy","name":"PG INSERT + commit (fsync)","p50":0.992,"p99":3.3,"n":1000}
+{"label":"docker","profile":"proxy","name":"PG 10 rows, 10 queries (N+1)","p50":3.83,"p99":8.81,"n":1000}
+{"label":"docker","profile":"proxy","name":"PG 10 rows, 1 query (= ANY)","p50":0.529,"p99":1.77,"n":1000}
+{"label":"docker","profile":"az","name":"TCP connect (SYN, SYN-ACK)","p50":0.719,"p99":1.82,"n":200}
+{"label":"docker","profile":"az","name":"TCP 1-byte round trip, open socket","p50":1.53,"p99":3.3,"n":200}
+{"label":"docker","profile":"az","name":"HTTP GET, new connection","p50":3.53,"p99":7.69,"n":200}
+{"label":"docker","profile":"az","name":"HTTP GET, keep-alive","p50":1.87,"p99":3.82,"n":200}
+{"label":"docker","profile":"az","name":"TLS 1.3 connect (TCP + full handshake)","p50":5.58,"p99":9.95,"n":200}
+{"label":"docker","profile":"az","name":"TLS 1.3 connect, session resumed","p50":5.22,"p99":9.31,"n":200}
+{"label":"docker","profile":"az","name":"HTTPS GET, new connection","p50":8.41,"p99":15.4,"n":200}
+{"label":"docker","profile":"az","name":"HTTPS GET, keep-alive","p50":1.98,"p99":5.13,"n":200}
+{"label":"docker","profile":"az","name":"Redis GET","p50":1.89,"p99":3.87,"n":200}
+{"label":"docker","profile":"az","name":"Redis 10 GETs, sequential","p50":18.2,"p99":30.6,"n":200}
+{"label":"docker","profile":"az","name":"Redis 10 keys, MGET","p50":1.61,"p99":2.08,"n":200}
+{"label":"docker","profile":"az","name":"Redis 10 GETs, pipelined","p50":1.67,"p99":2.71,"n":200}
+{"label":"docker","profile":"az","name":"PG new connection (TCP + SCRAM auth)","p50":11.8,"p99":21,"n":200}
+{"label":"docker","profile":"az","name":"PG SELECT 1","p50":1.56,"p99":2.81,"n":200}
+{"label":"docker","profile":"az","name":"PG SELECT by primary key","p50":1.83,"p99":3.41,"n":200}
+{"label":"docker","profile":"az","name":"PG INSERT + commit (fsync)","p50":2.39,"p99":6.24,"n":200}
+{"label":"docker","profile":"az","name":"PG 10 rows, 10 queries (N+1)","p50":19.7,"p99":39.6,"n":200}
+{"label":"docker","profile":"az","name":"PG 10 rows, 1 query (= ANY)","p50":1.8,"p99":2.64,"n":200}
+{"label":"docker","profile":"region","name":"TCP connect (SYN, SYN-ACK)","p50":1.44,"p99":1.92,"n":15}
+{"label":"docker","profile":"region","name":"TCP 1-byte round trip, open socket","p50":111,"p99":113,"n":15}
+{"label":"docker","profile":"region","name":"HTTP GET, new connection","p50":114,"p99":117,"n":15}
+{"label":"docker","profile":"region","name":"HTTP GET, keep-alive","p50":112,"p99":113,"n":15}
+{"label":"docker","profile":"region","name":"TLS 1.3 connect (TCP + full handshake)","p50":117,"p99":122,"n":15}
+{"label":"docker","profile":"region","name":"TLS 1.3 connect, session resumed","p50":117,"p99":122,"n":15}
+{"label":"docker","profile":"region","name":"HTTPS GET, new connection","p50":231,"p99":237,"n":15}
+{"label":"docker","profile":"region","name":"HTTPS GET, keep-alive","p50":112,"p99":114,"n":15}
+{"label":"docker","profile":"region","name":"Redis GET","p50":112,"p99":113,"n":15}
+{"label":"docker","profile":"region","name":"Redis 10 GETs, sequential","p50":1110,"p99":1120,"n":15}
+{"label":"docker","profile":"region","name":"Redis 10 keys, MGET","p50":111,"p99":113,"n":15}
+{"label":"docker","profile":"region","name":"Redis 10 GETs, pipelined","p50":111,"p99":112,"n":15}
+{"label":"docker","profile":"region","name":"PG new connection (TCP + SCRAM auth)","p50":400,"p99":421,"n":15}
+{"label":"docker","profile":"region","name":"PG SELECT 1","p50":112,"p99":114,"n":15}
+{"label":"docker","profile":"region","name":"PG SELECT by primary key","p50":112,"p99":113,"n":15}
+{"label":"docker","profile":"region","name":"PG INSERT + commit (fsync)","p50":113,"p99":115,"n":15}
+{"label":"docker","profile":"region","name":"PG 10 rows, 10 queries (N+1)","p50":1120,"p99":1120,"n":15}
+{"label":"docker","profile":"region","name":"PG 10 rows, 1 query (= ANY)","p50":112,"p99":113,"n":15}

@@ -1,0 +1,12 @@
+{
+  "name": "lab02-bench",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "ioredis": "5.6.1",
+    "pg": "8.16.3"
+  }
+}

@@ -294,7 +294,35 @@ Lições:
 
 ---
 
-## 7. Próximos estágios deste lab
+## 7. Custo por estágio (dinheiro não é infinito)
+
+O livro sobe estágio por estágio (LB, cache, CDN, réplica, fila, shard) sem dizer quando cada um se paga. Aqui cada estágio vira uma decisão de custo. A conta está em `labs/02-back-of-envelope/stages.ts` (`node stages.ts`), e os preços em `labs/02-back-of-envelope/prices.ts`.
+
+Carga: o app de docs deste lab. Mix por request de pico [E]: 90% leitura de 1 KB, 9% escrita, 1% anexo de 256 KB, 0.1% render com pico de 6× (E9b). Custos por operação [M]: os do E3, E4, E8 e E9. Média do mês = metade do pico. Mínimo de 2 instâncias em 2 AZs, banco Multi-AZ. Preços: tabela AWS us-east-1 on-demand, de memória (2025) [R]; conferir no dia.
+
+| pico | desenho enxuto | US$/mês | desenho final do livro | 1 máquina, sem HA |
+|---|---|---|---|---|
+| 100 rps | 2 APIs + PG pequeno, sem cache | 620 | 1.7k (2.8×) | 110 |
+| 1k rps | o mesmo | 1k | 2.1k (2.1×) | 110 |
+| 10k rps | 3 APIs + PG xlarge + Redis | 5.5k | 6k (1.1×) | 530 |
+| 100k rps | 26 APIs + PG 16xlarge + Redis | 45k | 50k (1.1×) | não cabe |
+
+"Desenho final do livro" = LB + cache + CDN + fila + 2 shards com 1 réplica cada, em qualquer carga. Referência pública [R]: o Stack Overflow em 2016 servia ~209M requests HTTP/dia (~2.4k/s de média, ~5k no pico) com 9 servidores web. Fica entre as linhas de 1k e 10k.
+
+Quando cada estágio se paga:
+- **Alta disponibilidade é o primeiro custo, e o maior em escala pequena.** A 100 rps, uma máquina com API + PG custa US$110; o mínimo com 2 APIs, LB e banco Multi-AZ custa US$620 (5.6×). A pergunta para o negócio não é "escala?", é "quanto vale uma hora fora do ar?" (ver E4 do lab 02).
+- **Cache se paga entre 1k e 10k rps.** Abaixo disso, o menor banco Multi-AZ já aguenta as leituras, e o Redis (US$320) só soma. A 10k, o cache troca um banco de US$2.8k por um de US$700 + US$320. Latência menor não entrou na conta: no E2 ela nem mudou.
+- **Réplica de leitura nunca se paga por preço.** Na RDS o preço por vCPU é o mesmo em todos os tamanhos. Até 64 vCPU, subir o tamanho custa o mesmo que uma réplica e não traz stale read (E7b). A réplica serve para: passar de 64 vCPU, isolar relatório/analytics, ou failover mais rápido.
+- **Shard nunca aparece até 100k rps** neste mix. Gatilho real: escrita medida acima de ~60% do maior primário ou dados acima de ~50 TB, não "temos muitos usuários". A 100k o banco já é 16xlarge por causa da escrita estimada (500/s por vCPU [E]); é o primeiro número a medir.
+- **CDN se paga desde o início.** CloudFront por GB custa quase o mesmo que a saída direta do S3/EC2 (US$0.085 vs US$0.09) e tira CPU da API e da origem. A 100k rps, anexos e respostas da API são 60% da conta: rede custa mais que compute.
+- **Fila não se paga por preço** neste mix: renders são 0.1% das requests, e pôr folga na frota de API sai mais barato que workers + SQS. A fila se justifica pelo que o E9 mediu: a API não trava no pico, o cliente recebe 202 em 3 ms e existe backpressure. É uma decisão de disponibilidade. Com jobs mais pesados ou mais frequentes, a conta inverte.
+- **Superdimensionar custa caro só em escala pequena.** O desenho final do livro custa 2–3× o enxuto até 1k rps e ~1.1× a partir de 10k. Mas o custo maior de construir cedo não é a AWS: é operar shards, réplicas e filas sem precisar.
+
+Fora da conta: tempo de engenharia, observabilidade, NAT, backups, staging.
+
+---
+
+## 8. Próximos estágios deste lab
 
 1. ~~Réplica de leitura PG~~ (E7). Faltam: cache + réplica (valor velho no cache), réplica síncrona, matar a réplica sob carga.
 2. ~~Object storage + CDN~~ (E8). Faltam: upload direto com presigned PUT, Origin Shield (2 níveis de cache).

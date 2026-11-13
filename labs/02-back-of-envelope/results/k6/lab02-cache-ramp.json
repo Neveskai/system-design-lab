@@ -1,0 +1,16 @@
+{
+  "run": "lab02-cache-ramp",
+  "target": "http://nginx",
+  "op": "read",
+  "mode": "ramp",
+  "rate_requested": 10000,
+  "rps_achieved": 5139.836746249621,
+  "p50": 88.626951,
+  "p95": 412.0239089999999,
+  "p99": 739.9955369,
+  "max": 1799.770126,
+  "error_rate": 0,
+  "dropped_iterations": 88107,
+  "iterations_rate": 5139.836746249621,
+  "mbytes_per_s": 6.7917390443864445
+}

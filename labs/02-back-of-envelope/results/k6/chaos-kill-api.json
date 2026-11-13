@@ -1,0 +1,16 @@
+{
+  "run": "chaos-kill-api",
+  "target": "http://nginx",
+  "op": "read",
+  "mode": "constant",
+  "rate_requested": 1500,
+  "rps_achieved": 1496.3490859112053,
+  "p50": 1.8695914999999999,
+  "p95": 45.129434999999944,
+  "p99": 200.09638903999996,
+  "max": 643.229806,
+  "error_rate": 0,
+  "dropped_iterations": 223,
+  "iterations_rate": 1496.3490859112053,
+  "mbytes_per_s": 1.9773065631360807
+}

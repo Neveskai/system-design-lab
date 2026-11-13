@@ -1,0 +1,16 @@
+{
+  "run": "unit-lb-read-3000",
+  "target": "http://nginx",
+  "op": "read",
+  "mode": "constant",
+  "rate_requested": 3000,
+  "rps_achieved": 2847.880052794317,
+  "p50": 45.558064,
+  "p95": 1010.0047246,
+  "p99": 2113.60773904,
+  "max": 6043.907541,
+  "error_rate": 0.16963454955086754,
+  "dropped_iterations": 9116,
+  "iterations_rate": 2847.880052794317,
+  "mbytes_per_s": 3.279320523412767
+}

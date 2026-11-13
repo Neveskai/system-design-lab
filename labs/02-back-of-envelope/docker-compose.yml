@@ -1,0 +1,59 @@
+# Lab 02: measure the "latency numbers" on this machine.
+#   docker compose up -d --build --wait server redis postgres toxiproxy
+#   docker compose run --rm bench node net.ts      # network / Redis / Postgres
+#   docker compose run --rm bench node local.ts    # CPU / memory / disk inside the Linux VM
+# Limits match lab 01 (2 vCPU for the DB) so numbers are comparable.
+name: lab02
+
+x-bench: &bench
+  build:
+    context: .
+    dockerfile: bench/Dockerfile
+  image: lab02-bench:latest
+
+services:
+  server:
+    <<: *bench
+    command: ["node", "server.ts"]
+    cpus: 1
+
+  redis:
+    image: redis:8.0-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    cpus: 1
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: lab
+      POSTGRES_PASSWORD: lab
+      POSTGRES_DB: lab
+    command: ["postgres", "-c", "synchronous_commit=on"]
+    cpus: 2
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lab -d lab"]
+      interval: 2s
+      retries: 60
+
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.12.0
+    cpus: 1
+
+  bench:
+    <<: *bench
+    profiles: ["tools"]
+    environment:
+      LABEL: docker
+      BENCH_DIR: /data
+    volumes:
+      - benchdata:/data
+    cpus: 2
+    depends_on:
+      server: { condition: service_started }
+      redis: { condition: service_started }
+      postgres: { condition: service_healthy }
+      toxiproxy: { condition: service_started }
+
+volumes:
+  benchdata:

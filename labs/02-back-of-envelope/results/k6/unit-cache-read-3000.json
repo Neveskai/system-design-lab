@@ -1,0 +1,16 @@
+{
+  "run": "unit-cache-read-3000",
+  "target": "http://nginx",
+  "op": "read",
+  "mode": "constant",
+  "rate_requested": 3000,
+  "rps_achieved": 2990.308093488355,
+  "p50": 1.7088364999999999,
+  "p95": 15.618945099999987,
+  "p99": 57.881462649999996,
+  "max": 1338.669937,
+  "error_rate": 0,
+  "dropped_iterations": 581,
+  "iterations_rate": 2990.308093488355,
+  "mbytes_per_s": 3.9514301144232147
+}

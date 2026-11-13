@@ -1,0 +1,16 @@
+{
+  "run": "lab02-lb-ramp",
+  "target": "http://nginx",
+  "op": "read",
+  "mode": "ramp",
+  "rate_requested": 8000,
+  "rps_achieved": 3299.1177127862065,
+  "p50": 451.09572249999997,
+  "p95": 826.334566,
+  "p99": 906.6114794499999,
+  "max": 1441.48563,
+  "error_rate": 0,
+  "dropped_iterations": 135261,
+  "iterations_rate": 3299.1177127862065,
+  "mbytes_per_s": 4.359169652229174
+}

@@ -1,0 +1,12 @@
+lab01-redis-exporter-1 0.008
+lab01-postgres-exporter-1 0.014
+lab01-postgres-replica-1 0.047
+lab01-redis-1 0.003
+lab01-postgres-1 0.281
+lab01-postgres-replica-exporter-1 0.014
+lab01-api-2 0.111
+lab01-api-1 0.113
+lab01-api-4 0.112
+lab01-api-3 0.109
+lab01-nginx-exporter-1 0.002
+lab01-nginx-1 0.166

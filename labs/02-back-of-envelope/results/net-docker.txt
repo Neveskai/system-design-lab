@@ -1,0 +1,36 @@
+ Container lab02-postgres-1 Running 
+ Container lab02-toxiproxy-1 Running 
+ Container lab02-redis-1 Running 
+ Container lab02-server-1 Recreate 
+ Container lab02-server-1 Recreated 
+ Container lab02-server-1 Starting 
+ Container lab02-server-1 Started 
+ Container lab02-postgres-1 Waiting 
+ Container lab02-postgres-1 Healthy 
+ Container lab02-bench-run-cd0544862f07 Creating 
+ Container lab02-bench-run-cd0544862f07 Created 
+-- profile direct (+0 ms RTT)
+-- profile proxy (+0 ms RTT)
+-- profile az (+1 ms RTT)
+-- profile region (+110 ms RTT)
+
+measurement                                         direct           proxy              az          region
+TCP connect (SYN, SYN-ACK)                        0.71/1.6      0.803/1.74      0.719/1.82       1.44/1.92
+TCP 1-byte round trip, open socket             0.104/0.549     0.241/0.783        1.53/3.3         111/113
+HTTP GET, new connection                         1.36/2.86        2.6/4.18       3.53/7.69         114/117
+HTTP GET, keep-alive                             0.27/1.19      0.448/1.47       1.87/3.82         112/113
+TLS 1.3 connect (TCP + full handshake)           3.01/5.94       4.48/7.99       5.58/9.95         117/122
+TLS 1.3 connect, session resumed                 2.95/5.74       4.26/7.48       5.22/9.31         117/122
+HTTPS GET, new connection                        4.18/7.01       6.27/11.2       8.41/15.4         231/237
+HTTPS GET, keep-alive                           0.362/1.35      0.694/1.89       1.98/5.13         112/114
+Redis GET                                     0.0867/0.507      0.325/0.91       1.89/3.87         112/113
+Redis 10 GETs, sequential                        1.26/3.41       2.99/6.09       18.2/30.6       1110/1120
+Redis 10 keys, MGET                              0.1/0.407       0.478/1.6       1.61/2.08         111/113
+Redis 10 GETs, pipelined                       0.134/0.474      0.462/1.37       1.67/2.71         111/112
+PG new connection (TCP + SCRAM auth)             8.89/19.3       9.35/15.9         11.8/21         400/421
+PG SELECT 1                                   0.0785/0.519      0.312/1.13       1.56/2.81         112/114
+PG SELECT by primary key                       0.212/0.877      0.491/1.67       1.83/3.41         112/113
+PG INSERT + commit (fsync)                       1.06/3.18       0.992/3.3       2.39/6.24         113/115
+PG 10 rows, 10 queries (N+1)                     2.83/8.11       3.83/8.81       19.7/39.6       1120/1120
+PG 10 rows, 1 query (= ANY)                     0.367/1.25      0.529/1.77        1.8/2.64         112/113
+(cells: p50/p99 ms)

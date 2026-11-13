@@ -1,0 +1,16 @@
+{
+  "run": "unit-single-read-2000",
+  "target": "http://api:3000",
+  "op": "read",
+  "mode": "constant",
+  "rate_requested": 2000,
+  "rps_achieved": 1921.9011787532113,
+  "p50": 773.85845,
+  "p95": 967.3560634,
+  "p99": 3253.743252520001,
+  "max": 4953.174204,
+  "error_rate": 0,
+  "dropped_iterations": 4008,
+  "iterations_rate": 1921.9011787532113,
+  "mbytes_per_s": 2.543443900664383
+}

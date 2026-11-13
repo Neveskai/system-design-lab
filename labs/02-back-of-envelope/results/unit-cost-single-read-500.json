@@ -1,0 +1,43 @@
+{
+  "stage": "single",
+  "op": "read",
+  "rate": 500.0,
+  "api_rps": 494.4,
+  "pg_tps": 519.8,
+  "cache_hit": null,
+  "cpu_cores": {
+    "k6": 0.51,
+    "api": 0.417,
+    "postgres": 0.29,
+    "postgres-replica": 0.047,
+    "seaweedfs": 0.021,
+    "postgres-replica-exporter": 0.016,
+    "postgres-exporter": 0.011,
+    "prometheus": 0.01,
+    "worker": 0.009,
+    "redis-exporter": 0.009,
+    "docker-stats": 0.008,
+    "bff": 0.007,
+    "grafana": 0.007,
+    "redis": 0.003,
+    "queue": 0.003,
+    "nginx-exporter": 0.002,
+    "nginx": 0.0,
+    "cdn": 0.0
+  },
+  "cpu_ms_per_request": {
+    "worker": 0.0179,
+    "redis-exporter": 0.0172,
+    "docker-stats": 0.0171,
+    "postgres-exporter": 0.0232,
+    "postgres-replica": 0.0946,
+    "prometheus": 0.0193,
+    "grafana": 0.0133,
+    "postgres": 0.5864,
+    "postgres-replica-exporter": 0.0315,
+    "seaweedfs": 0.0426,
+    "api": 0.843,
+    "bff": 0.0142,
+    "k6": 1.0321
+  }
+}
